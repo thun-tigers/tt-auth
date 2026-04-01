@@ -33,6 +33,7 @@ def create_app(config_class=Config):
         if app.config.get('AUTO_CREATE_DB', True):
             db.create_all()
             _seed_default_users(app)
+            _seed_default_services(app)
 
     return app
 
@@ -48,3 +49,29 @@ def _seed_default_users(app):
         db.session.add(admin)
         db.session.commit()
         app.logger.info(f'Default admin user "{admin_username}" created.')
+
+
+def _seed_default_services(app):
+    """Create default dashboard services if they are missing."""
+    if not app.config.get('CREATE_DEFAULT_SERVICES', True):
+        return
+
+    from .models import Service
+
+    agenda_name = 'agenda'
+    existing = Service.query.filter_by(name=agenda_name).first()
+    if existing:
+        return
+
+    service = Service(
+        name=agenda_name,
+        url=app.config.get('DEFAULT_AGENDA_URL', 'http://localhost:8085'),
+        icon='calendar-check',
+        description='Trainingsverwaltung und Live-Agenda',
+        required_role='user',
+        is_active=True,
+        sort_order=10,
+    )
+    db.session.add(service)
+    db.session.commit()
+    app.logger.info('Default service "agenda" created.')

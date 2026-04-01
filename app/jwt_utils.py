@@ -72,3 +72,28 @@ def clear_jwt_cookie(response):
         domain=domain,
     )
     return response
+
+
+def generate_sso_token(user, audience='tt-agenda'):
+    """Generate a short-lived SSO token for trusted downstream services."""
+    now = datetime.now(timezone.utc)
+    ttl_seconds = current_app.config.get('SSO_TOKEN_EXPIRY_SECONDS', 60)
+    payload = {
+        'sub': str(user.get('sub') if isinstance(user, dict) else user.id),
+        'username': user.get('username') if isinstance(user, dict) else user.username,
+        'role': user.get('role') if isinstance(user, dict) else user.role,
+        'aud': audience,
+        'iat': now,
+        'exp': now + timedelta(seconds=ttl_seconds),
+    }
+    secret = current_app.config.get('SSO_SHARED_SECRET') or current_app.config['SECRET_KEY']
+    return jwt.encode(payload, secret, algorithm='HS256')
+
+
+def validate_sso_token(token, audience='tt-agenda'):
+    """Validate an SSO token and return payload, or None on failure."""
+    try:
+        secret = current_app.config.get('SSO_SHARED_SECRET') or current_app.config['SECRET_KEY']
+        return jwt.decode(token, secret, algorithms=['HS256'], audience=audience)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
