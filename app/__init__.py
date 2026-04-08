@@ -35,6 +35,7 @@ def create_app(config_class=Config):
             db.create_all()
             _seed_default_users(app)
             _seed_default_services(app)
+            _bootstrap_platform_admin_access(app)
 
     return app
 
@@ -84,3 +85,32 @@ def _seed_default_services(app):
     except IntegrityError:
         db.session.rollback()
         app.logger.info('Default service "agenda" already exists.')
+
+
+def _bootstrap_platform_admin_access(app):
+    """Bootstrap initial service access for existing platform admins.
+
+    This only runs for admins who do not have any explicit service access yet.
+    """
+    from .models import User, Service, ServiceAccess
+
+    admins = User.query.filter_by(role='admin', is_active=True).all()
+    services = Service.query.filter_by(is_active=True).all()
+    if not admins or not services:
+        return
+
+    changed = False
+    for admin in admins:
+        has_explicit_access = ServiceAccess.query.filter_by(user_id=admin.id).first()
+        if has_explicit_access:
+            continue
+        for service in services:
+            db.session.add(ServiceAccess(user_id=admin.id, service_id=service.id, role='admin', is_active=True))
+            changed = True
+
+    if changed:
+        try:
+            db.session.commit()
+            app.logger.info('Bootstrapped initial service access for platform admins.')
+        except IntegrityError:
+            db.session.rollback()

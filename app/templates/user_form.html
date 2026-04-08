@@ -37,16 +37,51 @@
                 {% endfor %}
             </div>
 
-            <!-- Role -->
+            <!-- Platform Role -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rolle</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Plattformrolle</label>
                 <select name="role"
                     class="block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                     {% for value, label in form.role.choices %}
                     <option value="{{ value }}" {% if form.role.data == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Diese Rolle steuert nur den Zugriff auf die Plattform-Verwaltung in tt-auth.</p>
             </div>
+
+            <!-- Service Roles -->
+            {% if services %}
+            <div class="pt-2">
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Service-Rollen</label>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Hier wird festgelegt, auf welche Microservices der Benutzer Zugriff hat und ob er dort Administrator ist.</p>
+                </div>
+                <div class="space-y-3">
+                    {% for service in services %}
+                    <div class="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-3 items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg">
+                                <i class="bi bi-{{ service.icon }} text-indigo-600 dark:text-indigo-400"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-slate-900 dark:text-white">{{ service.name }}</div>
+                                {% if service.description %}
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ service.description }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <select name="service_role_{{ service.id }}"
+                            class="block w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                            {% set selected_role = service_roles.get(service.id, 'none') %}
+                            <option value="none" {% if selected_role == 'none' %}selected{% endif %}>Kein Zugriff</option>
+                            <option value="user" {% if selected_role == 'user' %}selected{% endif %}>Benutzer</option>
+                            <option value="admin" {% if selected_role == 'admin' %}selected{% endif %}>Administrator</option>
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Active -->
             <div class="flex items-center gap-3">

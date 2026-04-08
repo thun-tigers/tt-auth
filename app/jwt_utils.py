@@ -74,14 +74,26 @@ def clear_jwt_cookie(response):
     return response
 
 
-def generate_sso_token(user, audience='tt-agenda'):
+def generate_sso_token(user, audience='tt-agenda', service_role=None, platform_role=None):
     """Generate a short-lived SSO token for trusted downstream services."""
     now = datetime.now(timezone.utc)
     ttl_seconds = current_app.config.get('SSO_TOKEN_EXPIRY_SECONDS', 60)
+    resolved_service_role = (
+        service_role
+        or (user.get('role') if isinstance(user, dict) else user.role)
+        or 'user'
+    )
+    resolved_platform_role = (
+        platform_role
+        or (user.get('role') if isinstance(user, dict) else user.role)
+        or 'user'
+    )
     payload = {
         'sub': str(user.get('sub') if isinstance(user, dict) else user.id),
         'username': user.get('username') if isinstance(user, dict) else user.username,
-        'role': user.get('role') if isinstance(user, dict) else user.role,
+        'role': resolved_service_role,
+        'service_role': resolved_service_role,
+        'platform_role': resolved_platform_role,
         'aud': audience,
         'iat': now,
         'exp': now + timedelta(seconds=ttl_seconds),

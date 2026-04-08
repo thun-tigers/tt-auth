@@ -23,6 +23,23 @@ class User(db.Model):
         return f'<User {self.username} ({self.role})>'
 
 
+class ServiceAccess(db.Model):
+    __tablename__ = 'service_access'
+    __table_args__ = (db.UniqueConstraint('user_id', 'service_id', name='uq_user_service_access'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=False)
+    role = db.Column(db.String(16), nullable=False, default='user')
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('service_access', lazy=True, cascade='all, delete-orphan'))
+    service = db.relationship('Service', backref=db.backref('user_access', lazy=True, cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<ServiceAccess user={self.user_id} service={self.service_id} role={self.role}>'
+
+
 class Service(db.Model):
     __tablename__ = 'services'
 
