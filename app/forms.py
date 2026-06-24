@@ -45,7 +45,7 @@ class UserForm(Form):
     requested_team_id = SelectField('Beantragte Mannschaft', coerce=int, validators=[Optional()])
     requested_member_role = SelectField(
         'Beantragte Rolle',
-        choices=[('', 'Keine'), ('player', 'Spieler'), ('coach', 'Coach'), ('head_coach', 'Head Coach')],
+        choices=[('', 'Keine'), ('player', 'Spieler'), ('coach', 'Coach'), ('head_coach', 'Head Coach'), ('team_manager', 'Team-Manager')],
         validators=[Optional()],
     )
     profile_complete = BooleanField('Profil vollstaendig', default=False)

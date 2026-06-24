@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Review-Historie – Tigers Auth{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Review-Historie</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ user.display_name or user.username }} (@{{ user.username }})</p>
+    </div>
+    <a href="{{ url_for('users.index') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+        <i class="bi bi-arrow-left"></i>
+        Zurück
+    </a>
+</div>
+
+<div class="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
+    {% if events %}
+    <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-700/50">
+            <tr>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Zeitpunkt</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Aktion</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Quelle</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Reviewer</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Grund</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+            {% for event in events %}
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ event.created_at.strftime('%d.%m.%Y %H:%M') if event.created_at else '–' }}</td>
+                <td class="px-4 py-3">
+                    <span class="px-2 py-0.5 text-xs font-medium rounded-full {{ 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' if event.action == 'approved' else 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' }}">
+                        {{ 'Freigegeben' if event.action == 'approved' else 'Abgelehnt' }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    {{ {'users_ui': 'Auth UI', 'team_manager_api': 'Team-Manager API'}.get(event.source, event.source) }}
+                </td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    {% set reviewer = reviewers.get(event.reviewed_by_user_id) %}
+                    {{ reviewer.display_name or reviewer.username if reviewer else 'System/Unbekannt' }}
+                </td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ event.reason or '–' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="py-16 text-center text-slate-500 dark:text-slate-400">
+        <i class="bi bi-clock-history text-4xl mb-3 block"></i>
+        Keine Review-Ereignisse vorhanden.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

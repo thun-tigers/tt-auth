@@ -46,7 +46,6 @@ def create_app(config_class=Config):
         try:
             count = User.query.filter(
                 User.account_status.in_(['draft', 'pending']),
-                User.is_active.is_(False),
             ).count()
         except Exception:
             count = 0
@@ -262,6 +261,30 @@ def _ensure_lightweight_schema_updates(app):
         statements.append('ALTER TABLE users ADD COLUMN requested_team_id INTEGER')
     if 'requested_member_role' not in columns:
         statements.append('ALTER TABLE users ADD COLUMN requested_member_role VARCHAR(32)')
+    if 'review_action' not in columns:
+        statements.append('ALTER TABLE users ADD COLUMN review_action VARCHAR(16)')
+    if 'review_reason' not in columns:
+        statements.append('ALTER TABLE users ADD COLUMN review_reason TEXT')
+    if 'reviewed_by_user_id' not in columns:
+        statements.append('ALTER TABLE users ADD COLUMN reviewed_by_user_id INTEGER')
+    if 'reviewed_at' not in columns:
+        statements.append('ALTER TABLE users ADD COLUMN reviewed_at TIMESTAMP')
+
+    if 'user_review_events' not in inspector.get_table_names():
+        timestamp_type = 'TIMESTAMPTZ' if dialect == 'postgresql' else 'TIMESTAMP'
+        statements.append(
+            'CREATE TABLE IF NOT EXISTS user_review_events ('
+            'id INTEGER PRIMARY KEY, '
+            'user_id INTEGER NOT NULL, '
+            'action VARCHAR(16) NOT NULL, '
+            'reason TEXT NULL, '
+            'source VARCHAR(32) NOT NULL DEFAULT \'manual\', '
+            'reviewed_by_user_id INTEGER NULL, '
+            f'created_at {timestamp_type} NOT NULL DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        )
+        statements.append('CREATE INDEX IF NOT EXISTS ix_user_review_events_user_id ON user_review_events (user_id)')
+        statements.append('CREATE INDEX IF NOT EXISTS ix_user_review_events_created_at ON user_review_events (created_at)')
 
     # services table: internal_url column
     if 'services' in inspector.get_table_names():

@@ -7,12 +7,19 @@ def generate_jwt(user):
     """Generate a signed JWT for the given user."""
     now = datetime.now(timezone.utc)
     expiry_hours = current_app.config.get('JWT_EXPIRY_HOURS', 8)
+    claims = user.auth_claims() if hasattr(user, 'auth_claims') else {}
+    permissions = _build_permissions(user.role, user.role, claims.get('memberships') or [])
     payload = {
         'sub': str(user.id),
         'username': user.username,
         'role': user.role,
         'account_status': user.account_status,
         'profile_complete': user.profile_complete,
+        'memberships': claims.get('memberships') or [],
+        'pending_memberships': claims.get('pending_memberships') or [],
+        'teams': claims.get('teams') or [],
+        'member_roles': claims.get('member_roles') or [],
+        'permissions': permissions,
         'iat': now,
         'exp': now + timedelta(hours=expiry_hours),
     }
@@ -145,6 +152,9 @@ def _build_permissions(service_role, platform_role, memberships):
             permissions.add(f'team:{team_code}:write')
         if member_role == 'head_coach':
             permissions.add(f'team:{team_code}:admin')
+        if member_role == 'team_manager':
+            permissions.add(f'team:{team_code}:manage_users')
+            permissions.add('users:approve')
     return sorted(permissions)
 
 

@@ -18,10 +18,21 @@ class User(db.Model):
     display_name = db.Column(db.String(120), nullable=True)
     requested_team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=True)
     requested_member_role = db.Column(db.String(32), nullable=True)
+    review_action = db.Column(db.String(16), nullable=True)
+    review_reason = db.Column(db.Text, nullable=True)
+    reviewed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     requested_team = db.relationship('Team', foreign_keys=[requested_team_id], lazy='joined')
+    review_events = db.relationship(
+        'UserReviewEvent',
+        foreign_keys='UserReviewEvent.user_id',
+        backref='target_user',
+        lazy=True,
+        cascade='all, delete-orphan',
+    )
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -138,3 +149,20 @@ class TeamMembership(db.Model):
 
     def __repr__(self):
         return f'<TeamMembership user={self.user_id} team={self.team_id} role={self.member_role}>'
+
+
+class UserReviewEvent(db.Model):
+    __tablename__ = 'user_review_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    action = db.Column(db.String(16), nullable=False)  # approved, rejected
+    reason = db.Column(db.Text, nullable=True)
+    source = db.Column(db.String(32), nullable=False, default='manual')  # users_ui, team_manager_api
+    reviewed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by_user_id])
+
+    def __repr__(self):
+        return f'<UserReviewEvent user={self.user_id} action={self.action} source={self.source}>'
