@@ -25,6 +25,9 @@ class Config:
     DEFAULT_MEMBERS_URL = os.environ.get('DEFAULT_MEMBERS_URL', 'http://localhost:8088')
     DEFAULT_AGENDA_URL = os.environ.get('DEFAULT_AGENDA_URL', 'http://localhost:8086')
     DEFAULT_ANALYTICS_URL = os.environ.get('DEFAULT_ANALYTICS_URL', 'http://localhost:8087')
+    DEFAULT_MEMBERS_INTERNAL_URL = os.environ.get('DEFAULT_MEMBERS_INTERNAL_URL', 'http://host.docker.internal:8088')
+    DEFAULT_AGENDA_INTERNAL_URL = os.environ.get('DEFAULT_AGENDA_INTERNAL_URL', 'http://host.docker.internal:8086')
+    DEFAULT_ANALYTICS_INTERNAL_URL = os.environ.get('DEFAULT_ANALYTICS_INTERNAL_URL', 'http://host.docker.internal:8087')
     SSO_SHARED_SECRET = os.environ.get('SSO_SHARED_SECRET') or SECRET_KEY
     SSO_TOKEN_EXPIRY_SECONDS = int(os.environ.get('SSO_TOKEN_EXPIRY_SECONDS', 60))
     INTERNAL_API_SECRET = os.environ.get('INTERNAL_API_SECRET') or SSO_SHARED_SECRET

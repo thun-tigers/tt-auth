@@ -89,6 +89,7 @@ class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
     url = db.Column(db.String(255), nullable=False)
+    internal_url = db.Column(db.String(255), nullable=True)  # Service-zu-Service URL
     icon = db.Column(db.String(64), default='grid')  # Bootstrap Icons name
     description = db.Column(db.String(255), default='')
     required_role = db.Column(db.String(16), default='user')  # 'admin' or 'user'

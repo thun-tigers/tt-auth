@@ -38,6 +38,20 @@ def create_app(config_class=Config):
     app.register_blueprint(services_bp)
     app.register_blueprint(api_bp)
 
+    # Context processor: pending_users_count für Admin-Badge in allen Templates
+    @app.context_processor
+    def inject_pending_users_count():
+        from flask import request as flask_request
+        from .models import User
+        try:
+            count = User.query.filter(
+                User.account_status.in_(['draft', 'pending']),
+                User.is_active.is_(False),
+            ).count()
+        except Exception:
+            count = 0
+        return {'pending_users_count': count}
+
     with app.app_context():
         if app.config.get('AUTO_CREATE_DB', True):
             db.create_all()
@@ -79,6 +93,7 @@ def _seed_default_services(app):
         {
             'name': 'members',
             'url': app.config.get('DEFAULT_MEMBERS_URL', 'http://localhost:8088'),
+            'internal_url': app.config.get('DEFAULT_MEMBERS_INTERNAL_URL', 'http://host.docker.internal:8088'),
             'icon': 'person-badge',
             'description': 'Profile, Teams und Mitgliedschaften',
             'required_role': 'user',
@@ -87,6 +102,7 @@ def _seed_default_services(app):
         {
             'name': 'agenda',
             'url': app.config.get('DEFAULT_AGENDA_URL', 'http://localhost:8086'),
+            'internal_url': app.config.get('DEFAULT_AGENDA_INTERNAL_URL', 'http://host.docker.internal:8086'),
             'icon': 'calendar-check',
             'description': 'Trainingsverwaltung und Live-Agenda',
             'required_role': 'user',
@@ -95,6 +111,7 @@ def _seed_default_services(app):
         {
             'name': 'analytics',
             'url': app.config.get('DEFAULT_ANALYTICS_URL', 'http://localhost:8087'),
+            'internal_url': app.config.get('DEFAULT_ANALYTICS_INTERNAL_URL', 'http://host.docker.internal:8087'),
             'icon': 'bar-chart-line',
             'description': 'Spielanalyse, Scouting Reports und Videoauswertung',
             'required_role': 'user',
@@ -106,6 +123,10 @@ def _seed_default_services(app):
     for service_data in default_services:
         existing = Service.query.filter_by(name=service_data['name']).first()
         if existing:
+            # Update internal_url if not yet set
+            if not existing.internal_url:
+                existing.internal_url = service_data['internal_url']
+                db.session.commit()
             continue
         db.session.add(Service(is_active=True, **service_data))
         created.append(service_data['name'])
@@ -241,6 +262,12 @@ def _ensure_lightweight_schema_updates(app):
         statements.append('ALTER TABLE users ADD COLUMN requested_team_id INTEGER')
     if 'requested_member_role' not in columns:
         statements.append('ALTER TABLE users ADD COLUMN requested_member_role VARCHAR(32)')
+
+    # services table: internal_url column
+    if 'services' in inspector.get_table_names():
+        service_columns = {col['name'] for col in inspector.get_columns('services')}
+        if 'internal_url' not in service_columns:
+            statements.append('ALTER TABLE services ADD COLUMN internal_url VARCHAR(255)')
 
     for statement in statements:
         db.session.execute(text(statement))

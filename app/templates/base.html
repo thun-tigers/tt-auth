@@ -20,12 +20,18 @@
         tailwind.config = { darkMode: 'class' }
     </script>
 
-    <!-- Early dark mode (avoid flash) -->
+    <!-- Early theme apply (supports system/light/dark across services) -->
     <script>
         (function() {
-            const stored = localStorage.getItem('theme');
+            function readCookie(name) {
+                const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+            const stored = readCookie('tt_theme') || localStorage.getItem('theme') || 'system';
             const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            if ((stored || system) === 'dark') document.documentElement.classList.add('dark');
+            const effective = stored === 'system' ? system : stored;
+            if (effective === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
         })();
     </script>
 
@@ -52,9 +58,17 @@
                         <a href="{{ url_for('dashboard.index') }}" class="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
                             <i class="bi bi-grid mr-1"></i><span class="hidden sm:inline">Dashboard</span>
                         </a>
+                        <a href="{{ url_for('dashboard.profile') }}" class="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
+                            <i class="bi bi-person mr-1"></i><span class="hidden sm:inline">Mein Profil</span>
+                        </a>
                         {% if current_user.role == 'admin' %}
-                        <a href="{{ url_for('users.index') }}" class="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
+                        <a href="{{ url_for('users.index') }}" class="relative px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
                             <i class="bi bi-people mr-1"></i><span class="hidden sm:inline">Benutzer</span>
+                            {% if pending_users_count > 0 %}
+                            <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                                {{ pending_users_count if pending_users_count < 100 else '99+' }}
+                            </span>
+                            {% endif %}
                         </a>
                         <a href="{{ url_for('services.index') }}" class="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
                             <i class="bi bi-app-indicator mr-1"></i><span class="hidden sm:inline">Services</span>
@@ -75,6 +89,9 @@
                         <div class="hidden sm:block text-right">
                             <div class="text-sm font-medium">{{ current_user.username }}</div>
                             <div class="text-xs text-indigo-500 dark:text-indigo-400 capitalize">{{ current_user.role }}</div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
+                            {{ current_user.username[0].upper() }}
                         </div>
                         <a href="{{ url_for('auth.logout') }}" class="p-2 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition" title="Abmelden">
                             <i class="bi bi-box-arrow-right"></i>
@@ -108,25 +125,66 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Theme Toggle Script -->
+    <!-- Theme Toggle Script (light/dark/system + cookie sync) -->
     <script>
         const toggle = document.getElementById('themeToggle');
         const icon = document.getElementById('themeIcon');
-        function applyTheme(theme) {
-            if (theme === 'dark') {
+
+        function readCookie(name) {
+            const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        }
+
+        function resolveTheme(preference) {
+            if (preference === 'system') {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            return preference;
+        }
+
+        function applyTheme(preference) {
+            const effective = resolveTheme(preference);
+            if (effective === 'dark') {
                 document.documentElement.classList.add('dark');
-                icon.className = 'bi bi-sun-fill';
             } else {
                 document.documentElement.classList.remove('dark');
+            }
+
+            if (preference === 'system') {
+                icon.className = 'bi bi-circle-half';
+                toggle.title = 'Design-Modus: System';
+            } else if (preference === 'dark') {
+                icon.className = 'bi bi-sun-fill';
+                toggle.title = 'Design-Modus: Dunkel';
+            } else {
                 icon.className = 'bi bi-moon-fill';
+                toggle.title = 'Design-Modus: Hell';
             }
         }
-        applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+        function saveTheme(preference) {
+            localStorage.setItem('theme', preference);
+            document.cookie = 'tt_theme=' + encodeURIComponent(preference) + '; path=/; max-age=31536000; samesite=lax';
+            applyTheme(preference);
+        }
+
+        let currentTheme = readCookie('tt_theme') || localStorage.getItem('theme') || 'system';
+        if (!['light', 'dark', 'system'].includes(currentTheme)) {
+            currentTheme = 'system';
+        }
+        applyTheme(currentTheme);
+
         toggle.addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            const theme = isDark ? 'dark' : 'light';
-            localStorage.setItem('theme', theme);
-            applyTheme(theme);
+            const order = ['system', 'light', 'dark'];
+            const idx = order.indexOf(currentTheme);
+            currentTheme = order[(idx + 1) % order.length];
+            saveTheme(currentTheme);
+        });
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (currentTheme === 'system') {
+                applyTheme('system');
+            }
         });
     </script>
 

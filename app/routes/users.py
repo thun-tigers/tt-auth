@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, current_app, render_template, redirect, url_for, request, flash
+import logging
+import requests as http_requests
 from ..extensions import db
 from ..models import Team, TeamMembership, User, Service, ServiceAccess
 from ..forms import UserForm
 from . import login_required, admin_required
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
@@ -104,6 +108,15 @@ def edit(current_user, user_id):
                 user.set_password(form.password.data)
             _sync_service_access(user, services, request.form)
             _sync_team_memberships(user, teams, request.form)
+            db.session.flush()
+            # Auto-approve: hat der Benutzer mindestens eine aktive Team-Mitgliedschaft,
+            # werden is_active und profile_complete automatisch gesetzt.
+            has_active_membership = any(m.is_active for m in user.memberships)
+            if has_active_membership:
+                user.is_active = True
+                user.profile_complete = True
+                if user.account_status in ('draft', 'pending'):
+                    user.account_status = 'active'
             db.session.commit()
             flash(f'Benutzer "{user.username}" aktualisiert.', 'success')
             return redirect(url_for('users.index'))
@@ -153,9 +166,12 @@ def delete(current_user, user_id):
     elif str(user_id) == current_user['sub']:
         flash('Du kannst deinen eigenen Account nicht löschen.', 'danger')
     else:
+        auth_user_id = user.id
+        username = user.username
         db.session.delete(user)
         db.session.commit()
-        flash(f'Benutzer "{user.username}" gelöscht.', 'success')
+        _cascade_delete_user(auth_user_id, username)
+        flash(f'Benutzer "{username}" gelöscht.', 'success')
     return redirect(url_for('users.index'))
 
 
@@ -250,3 +266,36 @@ def _sync_team_memberships(user, teams, form_data):
                 member_role=desired_role,
                 is_active=True,
             ))
+
+
+def _cascade_delete_user(auth_user_id: int, username: str) -> None:
+    """Benachrichtigt alle Services per interner API über die Löschung eines Benutzers.
+
+    Best-effort: Fehler blockieren den Delete nicht, werden aber geloggt.
+    """
+    secret = current_app.config.get('INTERNAL_API_SECRET')
+    if not secret:
+        logger.warning('INTERNAL_API_SECRET nicht konfiguriert – Cascade-Delete übersprungen.')
+        return
+
+    services = Service.query.filter(
+        Service.internal_url.isnot(None),
+        Service.is_active.is_(True),
+    ).all()
+
+    for service in services:
+        url = f"{service.internal_url.rstrip('/')}/api/internal/users/{auth_user_id}"
+        try:
+            response = http_requests.delete(
+                url,
+                headers={'X-TT-Internal-Secret': secret},
+                timeout=5,
+            )
+            if response.status_code == 404:
+                logger.info('Cascade-Delete %s: Benutzer "%s" war nicht vorhanden.', service.name, username)
+            elif response.status_code >= 400:
+                logger.warning('Cascade-Delete %s: HTTP %s – %s', service.name, response.status_code, response.text)
+            else:
+                logger.info('Cascade-Delete %s: Benutzer "%s" erfolgreich entfernt.', service.name, username)
+        except http_requests.RequestException as exc:
+            logger.warning('Cascade-Delete %s: Verbindungsfehler – %s', service.name, exc)

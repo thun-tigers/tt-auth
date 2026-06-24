@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Mein Profil – Tigers Auth{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold">Mein Profil</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Theme, Passwort und Profildaten zentral verwalten.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <h2 class="text-base font-semibold mb-4">Designmodus (global)</h2>
+            <form method="POST" class="space-y-4">
+                <input type="hidden" name="action" value="theme">
+                <label for="theme_preference" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Hell / Dunkel / System</label>
+                <select id="theme_preference" name="theme_preference" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                    <option value="system" {% if selected_theme == 'system' %}selected{% endif %}>Systemmodus</option>
+                    <option value="light" {% if selected_theme == 'light' %}selected{% endif %}>Hell</option>
+                    <option value="dark" {% if selected_theme == 'dark' %}selected{% endif %}>Dunkel</option>
+                </select>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Diese Einstellung wird über alle Microservices verwendet.</p>
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="bi bi-palette"></i>
+                    Design speichern
+                </button>
+            </form>
+        </section>
+
+        <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <h2 class="text-base font-semibold mb-4">Passwort ändern</h2>
+            <form method="POST" class="space-y-3">
+                <input type="hidden" name="action" value="password">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Aktuelles Passwort</label>
+                    <input type="password" name="current_password" required class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Neues Passwort</label>
+                    <input type="password" name="new_password" minlength="8" required class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Neues Passwort wiederholen</label>
+                    <input type="password" name="new_password_confirm" minlength="8" required class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="bi bi-key"></i>
+                    Passwort aktualisieren
+                </button>
+            </form>
+        </section>
+    </div>
+
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+        <h2 class="text-base font-semibold mb-4">Profildaten</h2>
+        <form method="POST" class="space-y-4">
+            <input type="hidden" name="action" value="profile">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vorname</label>
+                    <input type="text" name="first_name" value="{{ user.first_name or '' }}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nachname</label>
+                    <input type="text" name="last_name" value="{{ user.last_name or '' }}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Anzeigename</label>
+                    <input type="text" name="display_name" value="{{ user.display_name or '' }}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">E-Mail</label>
+                    <input type="email" name="email" value="{{ user.email or '' }}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm">
+                </div>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="bi bi-save"></i>
+                    Profildaten speichern
+                </button>
+                {% if members_profile_url %}
+                <a href="{{ members_profile_url }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <i class="bi bi-person-lines-fill"></i>
+                    Mitgliederdaten verwalten
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
