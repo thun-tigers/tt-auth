@@ -1,5 +1,17 @@
+from urllib.parse import urlparse
 from wtforms import Form, StringField, PasswordField, SelectField, BooleanField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, URL, NumberRange
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, NumberRange, ValidationError
+
+
+def FlexibleURL(message='Ungültige URL.'):
+    def validate(form, field):
+        try:
+            result = urlparse(field.data)
+            if not result.scheme in ('http', 'https') or not result.netloc:
+                raise ValidationError(message)
+        except Exception:
+            raise ValidationError(message)
+    return validate
 
 
 class LoginForm(Form):
@@ -48,7 +60,7 @@ class UserForm(Form):
 
 class ServiceForm(Form):
     name = StringField('Name', validators=[DataRequired(), Length(max=64)])
-    url = StringField('URL', validators=[DataRequired(), URL(), Length(max=255)])
+    url = StringField('URL', validators=[DataRequired(), FlexibleURL(), Length(max=255)])
     icon = StringField('Bootstrap Icon', validators=[Optional(), Length(max=64)], default='grid')
     description = TextAreaField('Beschreibung', validators=[Optional(), Length(max=255)])
     required_role = SelectField('Mindestrolle', choices=[('user', 'Benutzer'), ('admin', 'Administrator')])
