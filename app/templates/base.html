@@ -78,11 +78,11 @@
       {% set ep = request.endpoint %}
       <a href="{{ url_for('dashboard.index') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
         {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep == 'dashboard.index' else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
-        <i class="bi bi-grid"></i>Dashboard
+        <i class="bi bi-grid-fill"></i>Apps
       </a>
       <a href="{{ url_for('users.index') }}" class="relative inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
         {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep in ['users.index','users.new','users.edit','users.review_history'] else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
-        <i class="bi bi-people"></i>Benutzer
+        <i class="bi bi-people-fill"></i>Benutzer
         {% if pending_users_count > 0 %}
         <span class="min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">{{ pending_users_count if pending_users_count < 100 else '99+' }}</span>
         {% endif %}
@@ -124,14 +124,14 @@
     <div class="px-4 py-3 space-y-1">
       {% set ep = request.endpoint %}
       <a href="{{ url_for('dashboard.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep == 'dashboard.index' else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-        <i class="bi bi-grid"></i>Dashboard
+        <i class="bi bi-grid-fill"></i>Apps
       </a>
       <a href="{{ url_for('dashboard.profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep == 'dashboard.profile' else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-        <i class="bi bi-person"></i>Profil
+        <i class="bi bi-person-fill"></i>Profil
       </a>
       {% if current_user.role == 'admin' %}
       <a href="{{ url_for('users.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep in ['users.index','users.new','users.edit'] else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-        <i class="bi bi-people"></i>Benutzer
+        <i class="bi bi-people-fill"></i>Benutzer
       </a>
       <a href="{{ url_for('services.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep in ['services.index','services.new','services.edit'] else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
         <i class="bi bi-app-indicator"></i>Services
@@ -194,10 +194,10 @@
 <nav class="sticky bottom-0 z-40 lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 glass safe-bottom">
   <div class="grid grid-cols-4 max-w-lg mx-auto">
     {% set t_tabs = [
-      ('apps', 'bi-grid', 'Apps', 'dashboard.index'),
+      ('apps', 'bi-grid-fill', 'Apps', 'dashboard.index'),
       ('activity', 'bi-activity', 'Aktivität', 'dashboard.index'),
-      ('admin', 'bi-people', 'Verwaltung', 'users.index'),
-      ('profile', 'bi-person', 'Profil', 'dashboard.profile'),
+      ('admin', 'bi-people-fill', 'Verwaltung', 'users.index'),
+      ('profile', 'bi-person-fill', 'Profil', 'dashboard.profile'),
     ] %}
     {% for tab_id, icon, label, endpoint in t_tabs %}
     {% if tab_id == 'admin' and current_user.role != 'admin' %}

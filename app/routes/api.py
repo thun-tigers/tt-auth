@@ -501,7 +501,7 @@ def team_manager_approve_user():
     ))
 
     # Minimal activation equivalent to users.approve route
-    services = ['members', 'agenda']
+    services = ['members', 'agenda', 'attendance']
     from ..models import Service, ServiceAccess
     for service in Service.query.filter(Service.name.in_(services), Service.is_active.is_(True)).all():
         access = ServiceAccess.query.filter_by(user_id=target.id, service_id=service.id).first()

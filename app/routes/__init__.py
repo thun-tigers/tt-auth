@@ -10,7 +10,6 @@ def login_required(f):
         token = get_jwt_from_request()
         payload = validate_jwt(token) if token else None
         if not payload:
-            flash('Bitte einloggen.', 'warning')
             next_path = request.full_path if request.query_string else request.path
             return redirect(url_for('auth.login', next=next_path))
         return f(*args, current_user=payload, **kwargs)

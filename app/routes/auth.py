@@ -82,7 +82,7 @@ def register():
             db.session.add(user)
             db.session.flush()
             default_services = Service.query.filter(
-                Service.name.in_(['members', 'agenda']),
+                Service.name.in_(['members', 'agenda', 'attendance']),
                 Service.is_active.is_(True),
             ).all()
             for service in default_services:

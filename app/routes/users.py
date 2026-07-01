@@ -217,7 +217,7 @@ def _sync_service_access(user, services, form_data):
             desired_role = (form_data.get(field_name) or 'none').strip().lower()
             if desired_role not in allowed_roles:
                 desired_role = 'none'
-            if service.name in {'members', 'agenda'} and desired_role == 'none':
+            if service.name in {'members', 'agenda', 'attendance'} and desired_role == 'none':
                 desired_role = 'user'
 
         current_access = existing.get(service.id)
@@ -240,7 +240,7 @@ def _sync_service_access(user, services, form_data):
 
 def _grant_default_service_access(user):
     services = Service.query.filter(
-        Service.name.in_(['members', 'agenda']),
+        Service.name.in_(['members', 'agenda', 'attendance']),
         Service.is_active.is_(True),
     ).all()
     for service in services:

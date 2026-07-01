@@ -133,9 +133,13 @@ def _seed_default_services(app):
     for service_data in default_services:
         existing = Service.query.filter_by(name=service_data['name']).first()
         if existing:
-            # Update internal_url if not yet set
-            if not existing.internal_url:
-                existing.internal_url = service_data['internal_url']
+            updated = False
+            for field in ('url', 'internal_url', 'icon', 'description', 'required_role', 'sort_order'):
+                new_value = service_data[field]
+                if getattr(existing, field) != new_value:
+                    setattr(existing, field, new_value)
+                    updated = True
+            if updated:
                 db.session.commit()
             continue
         db.session.add(Service(is_active=True, **service_data))
@@ -190,12 +194,12 @@ def _bootstrap_platform_admin_access(app):
 
 
 def _bootstrap_default_user_access(app):
-    """Ensure Members and Agenda are available to every active account."""
+    """Ensure core services are available to every active account."""
     from .models import User, Service, ServiceAccess
 
     users = User.query.filter_by(is_active=True).all()
     services = Service.query.filter(
-        Service.name.in_(['members', 'agenda']),
+        Service.name.in_(['members', 'agenda', 'attendance']),
         Service.is_active.is_(True),
     ).all()
     changed = False
@@ -214,7 +218,7 @@ def _bootstrap_default_user_access(app):
     if changed:
         try:
             db.session.commit()
-            app.logger.info('Bootstrapped Members and Agenda access for all users.')
+            app.logger.info('Bootstrapped Members, Agenda and Attendance access for all users.')
         except IntegrityError:
             db.session.rollback()
 
