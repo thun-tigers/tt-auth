@@ -27,7 +27,7 @@ class RegisterForm(Form):
     requested_team_id = SelectField('Mannschaft', coerce=int, validators=[DataRequired()])
     requested_member_role = SelectField(
         'Rolle im Team',
-        choices=[('player', 'Spieler'), ('coach', 'Coach'), ('head_coach', 'Head Coach')],
+        choices=[('player', 'Spieler'), ('coach', 'Coach'), ('head_coach', 'Head Coach'), ('team_betreuer', 'Team-Betreuer')],
         validators=[DataRequired()],
     )
     password = PasswordField('Passwort', validators=[DataRequired(), Length(min=8, max=128)])

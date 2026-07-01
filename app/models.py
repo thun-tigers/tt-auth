@@ -133,7 +133,7 @@ class TeamMembership(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
-    member_role = db.Column(db.String(32), nullable=False, default='player')  # player, coach, head_coach
+    member_role = db.Column(db.String(32), nullable=False, default='player')  # player, coach, head_coach, team_manager, team_betreuer
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
     user = db.relationship('User', backref=db.backref('memberships', lazy=True, cascade='all, delete-orphan'))
