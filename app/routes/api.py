@@ -79,7 +79,7 @@ def _can_manage_team(approver, team_id):
         user_id=approver.id,
         team_id=team_id,
         is_active=True,
-    ).filter(TeamMembership.member_role.in_(['team_manager', 'head_coach'])).first())
+    ).filter(TeamMembership.member_role.in_(['team_manager', 'team_betreuer', 'head_coach'])).first())
 
 
 def _managed_team_ids(approver):
@@ -88,7 +88,7 @@ def _managed_team_ids(approver):
     return {
         membership.team_id
         for membership in approver.memberships
-        if membership.is_active and membership.member_role in {'team_manager', 'head_coach'}
+        if membership.is_active and membership.member_role in {'team_manager', 'team_betreuer', 'head_coach'}
     }
 
 
@@ -180,6 +180,7 @@ def _serialize_user_for_management(user, allowed_team_ids=None):
     pending_memberships = [membership for membership in memberships if not membership.is_active]
     return {
         'id': user.id,
+        'auth_user_id': getattr(user, 'auth_user_id', user.id),
         'username': user.username,
         'display_name': user.display_name,
         'email': user.email,
@@ -227,7 +228,7 @@ def _validate_active_memberships_payload(payload):
         member_role = (entry.get('member_role') or 'none').strip().lower()
         if not isinstance(team_id, int):
             return None, 'active_memberships_invalid_team_id'
-        if member_role not in {'none', 'player', 'coach', 'head_coach', 'team_manager'}:
+        if member_role not in {'none', 'player', 'coach', 'head_coach', 'team_manager', 'team_betreuer'}:
             return None, 'active_memberships_invalid_role'
         if member_role == 'none':
             continue
@@ -290,6 +291,108 @@ def team_manager_members():
         'teams': [_serialize_team(team) for team in teams],
         'users': [_serialize_user_for_management(user, allowed_team_ids) for user in users],
     })
+
+
+@bp.route('/internal/teams/<string:team_code>/active-member-count', methods=['GET'])
+def internal_team_active_member_count(team_code):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    normalized_code = (team_code or '').strip().upper()
+    if not normalized_code:
+        return jsonify({'error': 'team_code_required'}), 400
+
+    active_member_count = (
+        db.session.query(User.id)
+        .join(TeamMembership, TeamMembership.user_id == User.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .filter(
+            User.is_active.is_(True),
+            User.account_status == 'active',
+            Team.is_active.is_(True),
+            Team.code == normalized_code,
+            TeamMembership.is_active.is_(True),
+        )
+        .distinct()
+        .count()
+    )
+
+    active_player_count = (
+        db.session.query(User.id)
+        .join(TeamMembership, TeamMembership.user_id == User.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .filter(
+            User.is_active.is_(True),
+            User.account_status == 'active',
+            Team.is_active.is_(True),
+            Team.code == normalized_code,
+            TeamMembership.is_active.is_(True),
+            TeamMembership.member_role == 'player',
+        )
+        .distinct()
+        .count()
+    )
+
+    return jsonify({
+        'status': 'ok',
+        'team_code': normalized_code,
+        'active_member_count': active_member_count,
+        'active_player_count': active_player_count,
+    })
+
+
+@bp.route('/internal/teams/<string:team_code>/players', methods=['GET'])
+def internal_team_players(team_code):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    normalized_code = (team_code or '').strip().upper()
+    if not normalized_code:
+        return jsonify({'error': 'team_code_required'}), 400
+
+    users = (
+        User.query
+        .join(TeamMembership, TeamMembership.user_id == User.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .filter(
+            User.is_active.is_(True),
+            User.account_status == 'active',
+            Team.is_active.is_(True),
+            Team.code == normalized_code,
+            TeamMembership.is_active.is_(True),
+            TeamMembership.member_role == 'player',
+        )
+        .order_by(User.display_name.is_(None), User.display_name, User.username)
+        .all()
+    )
+
+    return jsonify({
+        'status': 'ok',
+        'team_code': normalized_code,
+        'players': [
+            {
+                'id': user.id,
+                'auth_user_id': getattr(user, 'auth_user_id', user.id),
+                'username': user.username,
+                'display_name': user.display_name,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            }
+            for user in users
+        ],
+    })
+
+
+@bp.route('/users/<int:user_id>', methods=['GET'])
+def internal_user(user_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'not_found'}), 404
+
+    return jsonify(_serialize_user_for_management(user))
 
 
 @bp.route('/team-manager/members/<int:target_user_id>', methods=['GET'])
