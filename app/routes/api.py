@@ -13,6 +13,34 @@ def _authorized():
     return bool(expected and provided and provided == expected)
 
 
+@bp.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'not_found'}), 404
+
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'display_name': user.full_name,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'email': user.email,
+        'role': user.role,
+        'account_status': user.account_status,
+        'profile_complete': user.profile_complete,
+        'memberships': [membership.claim() for membership in user.memberships if membership.is_active],
+        'teams': sorted({
+            membership.team.code
+            for membership in user.memberships
+            if membership.is_active and membership.team and membership.team.code
+        }),
+    })
+
+
 @bp.route('/users/<int:user_id>/profile-complete', methods=['POST'])
 def mark_profile_complete(user_id):
     if not _authorized():
