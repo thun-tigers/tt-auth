@@ -8,7 +8,8 @@ def generate_jwt(user):
     now = datetime.now(timezone.utc)
     expiry_hours = current_app.config.get('JWT_EXPIRY_HOURS', 8)
     claims = user.auth_claims() if hasattr(user, 'auth_claims') else {}
-    permissions = _build_permissions(user.role, user.role, claims.get('memberships') or [])
+    role_permissions = _build_role_permission_claims(claims.get('memberships') or [])
+    permissions = _build_permissions(user.role, user.role, claims.get('memberships') or [], role_permissions)
     payload = {
         'sub': str(user.id),
         'username': user.username,
@@ -19,6 +20,7 @@ def generate_jwt(user):
         'pending_memberships': claims.get('pending_memberships') or [],
         'teams': claims.get('teams') or [],
         'member_roles': claims.get('member_roles') or [],
+        'role_permissions': role_permissions,
         'permissions': permissions,
         'iat': now,
         'exp': now + timedelta(hours=expiry_hours),
@@ -134,7 +136,8 @@ def generate_sso_token(user, audience='tt-agenda', service_role=None, platform_r
             'member_roles': user.get('member_roles', []),
         }
 
-    permissions = _build_permissions(resolved_service_role, resolved_platform_role, claims.get('memberships') or [])
+    role_permissions = _build_role_permission_claims(claims.get('memberships') or [])
+    permissions = _build_permissions(resolved_service_role, resolved_platform_role, claims.get('memberships') or [], role_permissions)
 
     payload = {
         'sub': str(user.get('sub') if isinstance(user, dict) else user.id),
@@ -152,6 +155,7 @@ def generate_sso_token(user, audience='tt-agenda', service_role=None, platform_r
         'pending_memberships': claims.get('pending_memberships') or [],
         'teams': claims.get('teams') or [],
         'member_roles': claims.get('member_roles') or [],
+        'role_permissions': role_permissions,
         'permissions': permissions,
         'aud': audience,
         'iat': now,
@@ -161,11 +165,17 @@ def generate_sso_token(user, audience='tt-agenda', service_role=None, platform_r
     return jwt.encode(payload, secret, algorithm='HS256')
 
 
-def _build_permissions(service_role, platform_role, memberships):
+def _build_permissions(service_role, platform_role, memberships, role_permissions=None):
     if platform_role == 'admin' or service_role == 'admin':
         return ['*']
 
     permissions = {'profile:read', 'profile:update'}
+    role_permissions = role_permissions or {}
+
+    for service_name, service_perms in role_permissions.items():
+        for perm in service_perms:
+            permissions.add(f'service:{service_name}:{perm}')
+
     for membership in memberships:
         team_code = membership.get('team_code')
         member_role = membership.get('member_role')
@@ -177,6 +187,34 @@ def _build_permissions(service_role, platform_role, memberships):
         if member_role == 'head_coach':
             permissions.add(f'team:{team_code}:admin')
     return sorted(permissions)
+
+
+def _build_role_permission_claims(memberships):
+    from .models import RolePermission
+
+    member_roles = sorted({
+        (membership.get('member_role') or '').strip().lower()
+        for membership in memberships
+        if membership.get('member_role')
+    })
+    if not member_roles:
+        return {}
+
+    rows = RolePermission.query.filter(
+        RolePermission.is_active.is_(True),
+        RolePermission.member_role_key.in_(member_roles),
+    ).order_by(
+        RolePermission.sort_order,
+        RolePermission.service_name,
+        RolePermission.permission_key,
+    ).all()
+
+    result = {}
+    for row in rows:
+        result.setdefault(row.service_name, [])
+        if row.permission_key not in result[row.service_name]:
+            result[row.service_name].append(row.permission_key)
+    return result
 
 
 def validate_sso_token(token, audience='tt-agenda'):

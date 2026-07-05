@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, jsonify, request
 from datetime import datetime, timezone
 
 from ..extensions import db
-from ..models import Service, ServiceAccess, Team, TeamMembership, User, UserReviewEvent
+from ..models import MemberRole, Service, ServiceAccess, Team, TeamMembership, User, UserReviewEvent
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -116,7 +116,17 @@ def _managed_team_ids(approver):
     return {
         membership.team_id
         for membership in approver.memberships
-        if membership.is_active and membership.member_role in {'team_manager', 'head_coach'}
+        if membership.is_active and membership.member_role in {'team_manager', 'team_betreuer', 'head_coach'}
+    }
+
+
+def _viewer_team_ids(approver):
+    if not approver:
+        return set()
+    return {
+        membership.team_id
+        for membership in approver.memberships
+        if membership.is_active and membership.member_role in {'coach', 'team_manager', 'team_betreuer', 'head_coach'}
     }
 
 
@@ -228,6 +238,12 @@ def _editor_allowed_team_ids(approver):
     return _managed_team_ids(approver)
 
 
+def _viewer_allowed_team_ids(approver):
+    if approver.role == 'admin':
+        return None
+    return _viewer_team_ids(approver)
+
+
 def _can_edit_user(approver, target, allowed_team_ids):
     if approver.role == 'admin':
         return True
@@ -240,7 +256,26 @@ def _can_edit_user(approver, target, allowed_team_ids):
     )
 
 
+def _can_view_user(approver, target, allowed_team_ids):
+    if approver.role == 'admin':
+        return True
+    if not allowed_team_ids:
+        return False
+    return any(
+        membership.team_id in allowed_team_ids
+        for membership in target.memberships
+        if membership.is_active or not membership.is_active
+    )
+
+
 def _validate_active_memberships_payload(payload):
+    allowed_member_roles = {
+        role.key
+        for role in MemberRole.query.filter_by(is_active=True).all()
+    }
+    if not allowed_member_roles:
+        allowed_member_roles = {'player', 'coach', 'head_coach', 'team_manager', 'team_betreuer'}
+
     raw = payload.get('active_memberships')
     if raw is None:
         return None, 'active_memberships_required'
@@ -255,7 +290,7 @@ def _validate_active_memberships_payload(payload):
         member_role = (entry.get('member_role') or 'none').strip().lower()
         if not isinstance(team_id, int):
             return None, 'active_memberships_invalid_team_id'
-        if member_role not in {'none', 'player', 'coach', 'head_coach', 'team_manager'}:
+        if member_role != 'none' and member_role not in allowed_member_roles:
             return None, 'active_memberships_invalid_role'
         if member_role == 'none':
             continue
@@ -279,9 +314,11 @@ def team_manager_members():
     if not approver:
         return jsonify({'error': 'approver_not_found'}), 404
 
-    allowed_team_ids = _editor_allowed_team_ids(approver)
+    allowed_team_ids = _viewer_allowed_team_ids(approver)
     if approver.role != 'admin' and not allowed_team_ids:
         return jsonify({'error': 'forbidden'}), 403
+
+    editor_allowed_team_ids = _editor_allowed_team_ids(approver)
 
     query_text = (request.args.get('q') or '').strip().lower()
     query = (
@@ -315,8 +352,15 @@ def team_manager_members():
     return jsonify({
         'status': 'ok',
         'is_platform_admin': approver.role == 'admin',
+        'can_edit_members': approver.role == 'admin' or bool(editor_allowed_team_ids),
         'teams': [_serialize_team(team) for team in teams],
-        'users': [_serialize_user_for_management(user, allowed_team_ids) for user in users],
+        'users': [
+            {
+                **_serialize_user_for_management(user, allowed_team_ids),
+                'can_edit': _can_edit_user(approver, user, editor_allowed_team_ids),
+            }
+            for user in users
+        ],
     })
 
 
@@ -336,9 +380,11 @@ def team_manager_member_detail(target_user_id):
     if not target:
         return jsonify({'error': 'target_user_not_found'}), 404
 
-    allowed_team_ids = _editor_allowed_team_ids(approver)
-    if approver.role != 'admin' and not _can_edit_user(approver, target, allowed_team_ids):
+    allowed_team_ids = _viewer_allowed_team_ids(approver)
+    if approver.role != 'admin' and not _can_view_user(approver, target, allowed_team_ids):
         return jsonify({'error': 'forbidden'}), 403
+
+    editor_allowed_team_ids = _editor_allowed_team_ids(approver)
 
     teams = Team.query.filter_by(is_active=True).order_by(Team.sort_order, Team.name).all()
     if allowed_team_ids is not None:
@@ -347,8 +393,12 @@ def team_manager_member_detail(target_user_id):
     return jsonify({
         'status': 'ok',
         'is_platform_admin': approver.role == 'admin',
+        'can_edit_member': _can_edit_user(approver, target, editor_allowed_team_ids),
         'teams': [_serialize_team(team) for team in teams],
-        'user': _serialize_user_for_management(target, allowed_team_ids),
+        'user': {
+            **_serialize_user_for_management(target, allowed_team_ids),
+            'can_edit': _can_edit_user(approver, target, editor_allowed_team_ids),
+        },
     })
 
 

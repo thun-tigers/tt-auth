@@ -124,6 +124,36 @@ class Team(db.Model):
         return f'<Team {self.code}>'
 
 
+class MemberRole(db.Model):
+    __tablename__ = 'member_roles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    label = db.Column(db.String(100), nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
+    def __repr__(self):
+        return f'<MemberRole {self.key}>'
+
+
+class RolePermission(db.Model):
+    __tablename__ = 'role_permissions'
+    __table_args__ = (
+        db.UniqueConstraint('member_role_key', 'service_name', 'permission_key', name='uq_role_permission_triplet'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_role_key = db.Column(db.String(32), nullable=False, index=True)
+    service_name = db.Column(db.String(64), nullable=False, default='*', index=True)
+    permission_key = db.Column(db.String(64), nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
+    def __repr__(self):
+        return f'<RolePermission {self.member_role_key}:{self.service_name}:{self.permission_key}>'
+
+
 class TeamMembership(db.Model):
     __tablename__ = 'team_memberships'
     __table_args__ = (

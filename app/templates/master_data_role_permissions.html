@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Stammdaten Rechte-Matrix - Tigers Auth{% endblock %}
+
+{% set active_tab = 'admin' %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-lg font-bold text-slate-900 dark:text-white">Stammdaten: Rechte-Matrix</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Definiert Berechtigungen pro Mitgliedsrolle und Service.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('master_data.positions') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-xs font-medium transition">
+                <i class="bi bi-diagram-3"></i> Positionen
+            </a>
+            <a href="{{ url_for('master_data.member_roles') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-xs font-medium transition">
+                <i class="bi bi-people"></i> Mitgliedsrollen
+            </a>
+        </div>
+    </div>
+
+    <section class="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <div>
+                <h2 class="text-base font-semibold">CRUD-Rechte je Rolle</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Pro Zeile direkt Create, Read, Update, Delete setzen - klar als CRUD-Matrix.</p>
+            </div>
+            <span class="text-sm text-slate-500 dark:text-slate-400">{{ roles|length }} Rollen</span>
+        </div>
+        <form method="POST" action="{{ url_for('master_data.role_permissions_matrix_save') }}">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-700/50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Rolle</th>
+                            <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Service</th>
+                            <th class="px-4 py-3 text-center font-semibold text-slate-600 dark:text-slate-300">Create</th>
+                            <th class="px-4 py-3 text-center font-semibold text-slate-600 dark:text-slate-300">Read</th>
+                            <th class="px-4 py-3 text-center font-semibold text-slate-600 dark:text-slate-300">Update</th>
+                            <th class="px-4 py-3 text-center font-semibold text-slate-600 dark:text-slate-300">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                        {% for role in roles %}
+                            {% for service_name in service_names %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-semibold">{{ role.label }}</span>
+                                    <span class="text-xs text-slate-500 ml-2">{{ role.key }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if service_name == '*' %}
+                                    <span class="px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 text-xs font-semibold">Alle Services (*)</span>
+                                    {% else %}
+                                    <span class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-xs font-semibold">{{ service_name }}</span>
+                                    {% endif %}
+                                </td>
+                                {% for permission_key in permissions_catalog %}
+                                {% set matrix_key = role.key ~ '|' ~ service_name ~ '|' ~ permission_key %}
+                                <td class="px-4 py-3 text-center">
+                                    <input
+                                        type="checkbox"
+                                        name="perm__{{ role.key }}__{{ service_name }}__{{ permission_key }}"
+                                        value="y"
+                                        {% if matrix_lookup.get(matrix_key) %}checked{% endif %}
+                                        class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                    >
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Nicht angehakte Felder werden deaktiviert. Spezialrechte (z.B. approve/admin) bleiben unverändert.</p>
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="bi bi-check2-square"></i> Matrix speichern
+                </button>
+            </div>
+        </form>
+        </div>
+    </section>
+</div>
+{% endblock %}

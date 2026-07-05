@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Stammdaten Rollen - Tigers Auth{% endblock %}
+
+{% set active_tab = 'admin' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-lg font-bold text-slate-900 dark:text-white">Stammdaten: Mitgliedsrollen</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rollen für Team-Mitgliedschaften (Members/Team-Manager).</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('master_data.role_permissions') }}" title="Rechte-Matrix" class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-200 text-sm transition">
+                <i class="bi bi-sliders"></i>
+            </a>
+            <a href="{{ url_for('master_data.positions') }}" title="Positionen" class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-sm transition">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+        </div>
+    </div>
+
+    <section class="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h2 class="text-base font-semibold">Neue Rolle</h2>
+        </div>
+        <div class="px-6 py-4">
+            <form method="POST" action="{{ url_for('master_data.member_roles_new') }}" class="grid grid-cols-1 md:grid-cols-[160px_1fr_auto_auto] gap-3 items-end">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Schlüssel</label>
+                    <input type="text" name="key" required placeholder="team_betreuer" class="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Bezeichnung</label>
+                    <input type="text" name="label" required placeholder="Team-Betreuer" class="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm">
+                </div>
+                <label class="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm">
+                    <input type="checkbox" name="is_active" value="y" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                    <i class="bi bi-toggle-on"></i>
+                </label>
+                <button type="submit" title="Neue Rolle speichern" class="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 class="text-base font-semibold">Vorhandene Rollen</h2>
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-slate-500 dark:text-slate-400">{{ roles|length }} Einträge</span>
+                <button type="button" id="saveRoleOrder" title="Reihenfolge speichern" class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="bi bi-check-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700/50">
+                    <tr>
+                        <th class="w-10 px-4 py-3"></th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Schlüssel</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Bezeichnung</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Status</th>
+                        <th class="px-4 py-3 text-right font-semibold text-slate-600 dark:text-slate-300">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="memberRoleRows" class="divide-y divide-slate-100 dark:divide-slate-700">
+                    {% for role in roles %}
+                    <tr class="member-role-row" data-role-id="{{ role.id }}" draggable="true">
+                        <td class="px-4 py-3 align-middle">
+                            <button type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Reihenfolge ändern">
+                                <i class="bi bi-grip-vertical"></i>
+                            </button>
+                        </td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-semibold">{{ role.key }}</span></td>
+                        <td class="px-4 py-3">{{ role.label }}</td>
+                        <td class="px-4 py-3">
+                            {% if role.is_active %}
+                            <span title="Aktiv" class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"><i class="bi bi-check-lg"></i></span>
+                            {% else %}
+                            <span title="Inaktiv" class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"><i class="bi bi-dash"></i></span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <form method="POST" action="{{ url_for('master_data.member_roles_edit', role_id=role.id) }}" class="inline-flex items-center gap-2 mr-2">
+                                <input type="text" name="label" value="{{ role.label }}" required class="w-40 px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-xs">
+                                <label class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-300 dark:border-slate-600" title="Aktiv/Inaktiv"><input type="checkbox" name="is_active" value="y" {% if role.is_active %}checked{% endif %} class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"></label>
+                                <button type="submit" title="Rolle speichern" class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('master_data.member_roles_delete', role_id=role.id) }}" class="inline-block ml-2" onsubmit="return confirm('Rolle {{ role.key }} wirklich löschen?')">
+                                <button type="submit" title="Rolle löschen" class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-semibold transition">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                                        <tr><td colspan="5" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">Noch keine Rollen vorhanden.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+                <form id="memberRoleOrderForm" method="POST" action="{{ url_for('master_data.member_roles_reorder') }}"></form>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const body = document.getElementById('memberRoleRows');
+    const saveBtn = document.getElementById('saveRoleOrder');
+    const form = document.getElementById('memberRoleOrderForm');
+    if (!body || !saveBtn || !form) return;
+
+    const rows = () => Array.from(body.querySelectorAll('.member-role-row'));
+    let changed = false;
+    let dragged = null;
+
+    const syncOrder = () => {
+        form.querySelectorAll('input[name="order"]').forEach((el) => el.remove());
+        rows().forEach((row) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'order';
+            input.value = row.dataset.roleId;
+            form.appendChild(input);
+        });
+    };
+
+    const markChanged = () => {
+        changed = true;
+        saveBtn.disabled = false;
+    };
+
+    rows().forEach((row) => {
+        row.addEventListener('dragstart', () => {
+            dragged = row;
+            row.classList.add('opacity-50');
+        });
+        row.addEventListener('dragend', () => {
+            row.classList.remove('opacity-50');
+            dragged = null;
+        });
+        row.addEventListener('dragover', (event) => event.preventDefault());
+        row.addEventListener('drop', (event) => {
+            event.preventDefault();
+            if (!dragged || dragged === row) return;
+            const rect = row.getBoundingClientRect();
+            const after = event.clientY > rect.top + rect.height / 2;
+            body.insertBefore(dragged, after ? row.nextSibling : row);
+            syncOrder();
+            markChanged();
+        });
+    });
+
+    saveBtn.addEventListener('click', () => {
+        syncOrder();
+        form.submit();
+    });
+})();
+</script>
+{% endblock %}

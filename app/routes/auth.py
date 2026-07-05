@@ -2,7 +2,7 @@ from urllib.parse import urljoin, urlparse
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response
 from ..extensions import db, limiter
-from ..models import Service, ServiceAccess, Team, TeamMembership, User
+from ..models import MemberRole, Service, ServiceAccess, Team, TeamMembership, User
 from ..forms import LoginForm, RegisterForm
 from ..jwt_utils import generate_jwt, set_jwt_cookie, clear_jwt_cookie, get_jwt_from_request, validate_jwt
 
@@ -50,7 +50,9 @@ def login():
 def register():
     form = RegisterForm(request.form)
     teams = Team.query.filter_by(is_active=True).order_by(Team.sort_order, Team.name).all()
+    member_roles = MemberRole.query.filter_by(is_active=True).order_by(MemberRole.sort_order, MemberRole.label).all()
     form.requested_team_id.choices = [(team.id, team.name) for team in teams]
+    form.requested_member_role.choices = [(role.key, role.label) for role in member_roles]
     if request.method == 'GET':
         seniors = next((team for team in teams if team.code == 'SENIORS'), None)
         if seniors:

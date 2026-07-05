@@ -3,7 +3,7 @@ import logging
 import requests as http_requests
 from datetime import datetime, timezone
 from ..extensions import db
-from ..models import User, Service, ServiceAccess, UserReviewEvent
+from ..models import User, Service, ServiceAccess, Team, TeamMembership, UserReviewEvent
 from ..forms import UserForm
 from . import login_required, admin_required
 
@@ -21,7 +21,16 @@ def _is_platform_admin(current_user):
 @login_required
 @admin_required
 def index(current_user):
-    users = User.query.filter(User.account_status != 'draft').order_by(User.username).all()
+    selected_team_id = request.args.get('team_id', type=int)
+    teams = Team.query.filter_by(is_active=True).order_by(Team.sort_order, Team.name).all()
+
+    query = User.query.filter(User.account_status != 'draft')
+    if selected_team_id:
+        query = query.filter(
+            User.memberships.any(TeamMembership.team_id == selected_team_id)
+        )
+
+    users = query.order_by(User.username).all()
 
     review_summary = _build_review_summary(users)
     is_platform_admin = _is_platform_admin(current_user)
@@ -29,6 +38,8 @@ def index(current_user):
     return render_template(
         'users.html',
         users=users,
+        teams=teams,
+        selected_team_id=selected_team_id,
         current_user=current_user,
         review_summary=review_summary,
         is_platform_admin=is_platform_admin,

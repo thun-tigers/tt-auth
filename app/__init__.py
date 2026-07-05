@@ -55,11 +55,18 @@ def create_app(config_class=Config):
 
     with app.app_context():
         if app.config.get('AUTO_CREATE_DB', True):
-            db.create_all()
+            try:
+                db.create_all()
+            except IntegrityError:
+                # Multi-worker startup can race on first-time table creation in Postgres.
+                db.session.rollback()
+                app.logger.info('Schema creation race detected; continuing with existing tables.')
             _ensure_lightweight_schema_updates(app)
             _seed_default_users(app)
             _seed_default_services(app)
             _seed_default_teams(app)
+            _seed_default_member_roles(app)
+            _seed_default_role_permissions(app)
             _bootstrap_default_user_access(app)
             _bootstrap_platform_admin_access(app)
 
@@ -243,6 +250,86 @@ def _seed_default_teams(app):
         try:
             db.session.commit()
             app.logger.info('Default teams created.')
+        except IntegrityError:
+            db.session.rollback()
+
+
+def _seed_default_member_roles(app):
+    from .models import MemberRole
+
+    defaults = [
+        ('player', 'Spieler', 10),
+        ('coach', 'Coach', 20),
+        ('head_coach', 'Head Coach', 30),
+        ('team_manager', 'Team-Manager', 40),
+        ('team_betreuer', 'Team-Betreuer', 50),
+    ]
+
+    changed = False
+    for key, label, sort_order in defaults:
+        role = MemberRole.query.filter_by(key=key).first()
+        if role:
+            if role.label != label or role.sort_order != sort_order or not role.is_active:
+                role.label = label
+                role.sort_order = sort_order
+                role.is_active = True
+                changed = True
+            continue
+        db.session.add(MemberRole(key=key, label=label, sort_order=sort_order, is_active=True))
+        changed = True
+
+    if changed:
+        try:
+            db.session.commit()
+            app.logger.info('Default member roles created/updated.')
+        except IntegrityError:
+            db.session.rollback()
+
+
+def _seed_default_role_permissions(app):
+    from .models import RolePermission
+
+    defaults = [
+        ('player', '*', 'read', 10),
+        ('coach', '*', 'read', 20),
+        ('coach', '*', 'create', 30),
+        ('head_coach', '*', 'read', 40),
+        ('head_coach', '*', 'create', 50),
+        ('head_coach', '*', 'admin', 60),
+        ('team_manager', '*', 'read', 70),
+        ('team_manager', '*', 'create', 80),
+        ('team_manager', '*', 'approve', 90),
+        ('team_betreuer', '*', 'read', 100),
+        ('team_betreuer', '*', 'create', 110),
+        ('team_betreuer', '*', 'approve', 120),
+    ]
+
+    changed = False
+    for member_role_key, service_name, permission_key, sort_order in defaults:
+        item = RolePermission.query.filter_by(
+            member_role_key=member_role_key,
+            service_name=service_name,
+            permission_key=permission_key,
+        ).first()
+        if item:
+            if item.sort_order != sort_order or not item.is_active:
+                item.sort_order = sort_order
+                item.is_active = True
+                changed = True
+            continue
+        db.session.add(RolePermission(
+            member_role_key=member_role_key,
+            service_name=service_name,
+            permission_key=permission_key,
+            sort_order=sort_order,
+            is_active=True,
+        ))
+        changed = True
+
+    if changed:
+        try:
+            db.session.commit()
+            app.logger.info('Default role permissions created/updated.')
         except IntegrityError:
             db.session.rollback()
 
