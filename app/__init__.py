@@ -1,6 +1,7 @@
 import os
 import logging
-from flask import Flask
+import requests
+from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
 from .config import Config
 from .extensions import db, migrate, limiter
@@ -53,6 +54,10 @@ def create_app(config_class=Config):
             count = 0
         return {'pending_users_count': count}
 
+    @app.context_processor
+    def inject_pending_messages_count():
+        return {'pending_messages_count': _fetch_pending_messages_count(app, session.get('auth_user_id'))}
+
     with app.app_context():
         if app.config.get('AUTO_CREATE_DB', True):
             try:
@@ -71,6 +76,31 @@ def create_app(config_class=Config):
             _bootstrap_platform_admin_access(app)
 
     return app
+
+
+def _fetch_pending_messages_count(app, auth_user_id):
+    if not auth_user_id:
+        return 0
+
+    members_base = app.config.get('TT_MEMBERS_INTERNAL_URL') or app.config.get('DEFAULT_MEMBERS_INTERNAL_URL', 'http://tt-members:5000')
+    members_base = members_base.rstrip('/')
+    secret = app.config.get('INTERNAL_API_SECRET') or app.config.get('SSO_SHARED_SECRET') or app.config.get('SECRET_KEY')
+    if not secret:
+        return 0
+
+    try:
+        response = requests.get(
+            f'{members_base}/api/internal/messages/count',
+            params={'auth_user_id': auth_user_id},
+            headers={'X-TT-Internal-Secret': secret},
+            timeout=2,
+        )
+        if response.status_code != 200:
+            return 0
+        payload = response.json() or {}
+        return max(0, int(payload.get('pending_messages_count') or 0))
+    except Exception:
+        return 0
 
 
 def _seed_default_users(app):
@@ -124,6 +154,15 @@ def _seed_default_services(app):
             'description': 'Spielanalyse, Scouting Reports und Videoauswertung',
             'required_role': 'user',
             'sort_order': 20,
+        },
+        {
+            'name': 'infra',
+            'url': app.config.get('DEFAULT_INFRA_URL', 'http://localhost:8084'),
+            'internal_url': app.config.get('DEFAULT_INFRA_INTERNAL_URL', 'http://host.docker.internal:8084'),
+            'icon': 'shield-lock',
+            'description': 'Plattform-Admin, Backup und Betriebsfunktionen',
+            'required_role': 'admin',
+            'sort_order': 30,
         },
         {
             'name': 'attendance',

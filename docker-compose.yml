@@ -24,6 +24,7 @@ services:
       - DEFAULT_MEMBERS_URL=${DEFAULT_MEMBERS_URL:-http://localhost:8088}
       - DEFAULT_AGENDA_URL=${DEFAULT_AGENDA_URL:-http://localhost:8086}
       - DEFAULT_ANALYTICS_URL=${DEFAULT_ANALYTICS_URL:-http://localhost:8087}
+      - DEFAULT_INFRA_URL=${DEFAULT_INFRA_URL:-http://localhost:8084}
       - TT_INFRA_INTERNAL_URL=${TT_INFRA_INTERNAL_URL:-http://host.docker.internal:8084}
       - SSO_SHARED_SECRET=${SSO_SHARED_SECRET:-tt-sso-dev-secret-change-me}
       - INTERNAL_API_SECRET=${INTERNAL_API_SECRET:-tt-internal-dev-secret-change-me}
