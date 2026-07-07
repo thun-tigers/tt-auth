@@ -47,6 +47,17 @@ def create_app(config_class=Config):
     app.register_blueprint(master_data_bp)
     app.register_blueprint(api_bp)
 
+    # Zentrales UI-Layout aus tt-common
+    from tt_common import register_shared_ui
+    register_shared_ui(
+        app,
+        brand_label='Plattform',
+        brand_icon='bi-shield-lock',
+        home_endpoint='dashboard.index',
+        profile_endpoint='dashboard.profile',
+        logout_endpoint='auth.logout',
+    )
+
     # Context processor: pending_users_count für Admin-Badge in allen Templates
     @app.context_processor
     def inject_pending_users_count():

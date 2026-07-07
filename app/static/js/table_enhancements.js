@@ -3,6 +3,10 @@
         return (value || "").replace(/\s+/g, " ").trim();
     }
 
+    function toQuery(value) {
+        return normalize(value).toLowerCase();
+    }
+
     function isActionLabel(label) {
         return ["aktion", "aktionen", "action", "actions"].includes(label);
     }
@@ -45,7 +49,76 @@
         });
     }
 
-    function addColumnFilters(table, tbody) {
+    function buildSearchPlaceholder(table) {
+        const customPlaceholder = table.dataset.tableSearchPlaceholder;
+        if (customPlaceholder) {
+            return customPlaceholder;
+        }
+        const title = normalize(document.title).replace(/\s*[-–|].*$/, "");
+        if (title) {
+            return title + " durchsuchen...";
+        }
+        return "In Tabelle suchen...";
+    }
+
+    function createSearchBar(table, state, applyVisibility) {
+        if (table.dataset.tableSearch === "off") {
+            return null;
+        }
+
+        const host = table.parentElement;
+        if (!host) {
+            return null;
+        }
+
+        const bar = document.createElement("div");
+        bar.className = "mb-3 flex items-center justify-end";
+
+        const inputWrap = document.createElement("div");
+        inputWrap.className = "relative w-full sm:max-w-md";
+
+        const input = document.createElement("input");
+        input.type = "search";
+        input.value = state.search;
+        input.placeholder = buildSearchPlaceholder(table);
+        input.className = "w-full h-10 rounded-xl border border-slate-300 bg-white px-4 pr-10 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
+
+        const clearButton = document.createElement("button");
+        clearButton.type = "button";
+        clearButton.className = "absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200";
+        clearButton.setAttribute("aria-label", "Suche zurücksetzen");
+        clearButton.innerHTML = '<i class="bi bi-x-lg"></i>';
+
+        inputWrap.appendChild(input);
+        inputWrap.appendChild(clearButton);
+        bar.appendChild(inputWrap);
+        if (host.parentElement) {
+            host.parentElement.insertBefore(bar, host);
+        } else {
+            host.insertBefore(bar, table);
+        }
+
+        function syncClearButton() {
+            clearButton.classList.toggle("hidden", !input.value);
+        }
+
+        input.addEventListener("input", () => {
+            state.search = toQuery(input.value);
+            syncClearButton();
+            applyVisibility();
+        });
+
+        clearButton.addEventListener("click", () => {
+            input.value = "";
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.focus();
+        });
+
+        syncClearButton();
+        return bar;
+    }
+
+    function addColumnFilters(table, tbody, state, applyVisibility) {
         if (table.dataset.tableFilter === "off") {
             return;
         }
@@ -57,24 +130,6 @@
         }
 
         const headerCells = Array.from(headerRow.querySelectorAll("th"));
-        const filters = new Map();
-
-        function applyFilters() {
-            const activeFilters = Array.from(filters.entries()).filter(([, value]) => Boolean(value));
-            const pairs = getRowPairs(tbody);
-
-            pairs.forEach(({ row, editRow }) => {
-                const visible = activeFilters.every(([columnIndex, query]) => getCellText(row, columnIndex).includes(query));
-                row.style.display = visible ? "" : "none";
-
-                if (editRow) {
-                    if (activeFilters.length) {
-                        editRow.classList.add("hidden");
-                    }
-                    editRow.style.display = visible ? "" : "none";
-                }
-            });
-        }
 
         headerCells.forEach((th, index) => {
             const rawLabel = normalize(th.textContent).replace(/[▲▼]/g, "").trim();
@@ -129,8 +184,6 @@
             th.appendChild(filterPanel);
             th.appendChild(actionWrap);
 
-            filters.set(index, "");
-
             filterToggle.addEventListener("click", (event) => {
                 event.stopPropagation();
                 const willShow = filterPanel.classList.contains("hidden");
@@ -141,9 +194,9 @@
             });
 
             input.addEventListener("input", () => {
-                filters.set(index, normalize(input.value).toLowerCase());
+                state.columnFilters.set(index, toQuery(input.value));
                 clearButton.classList.toggle("hidden", !input.value);
-                applyFilters();
+                applyVisibility();
             });
 
             clearButton.addEventListener("click", () => {
@@ -283,16 +336,45 @@
         updateSortButtons();
     }
 
+    function initSmartTable(table) {
+        const tbody = table.querySelector("tbody");
+        if (!tbody) {
+            return;
+        }
+
+        const state = {
+            search: "",
+            columnFilters: new Map(),
+        };
+
+        function applyVisibility() {
+            const activeFilters = Array.from(state.columnFilters.entries()).filter(([, value]) => Boolean(value));
+            const searchQuery = state.search;
+            const pairs = getRowPairs(tbody);
+
+            pairs.forEach(({ row, editRow }) => {
+                const rowText = toQuery(row.textContent);
+                const matchesSearch = !searchQuery || rowText.includes(searchQuery);
+                const matchesColumns = activeFilters.every(([columnIndex, query]) => getCellText(row, columnIndex).includes(query));
+                const visible = matchesSearch && matchesColumns;
+
+                row.style.display = visible ? "" : "none";
+
+                if (editRow) {
+                    editRow.style.display = visible ? "" : "none";
+                    editRow.classList.toggle("hidden", !visible);
+                }
+            });
+        }
+
+        createSearchBar(table, state, applyVisibility);
+        addColumnFilters(table, tbody, state, applyVisibility);
+        addSorting(table, tbody);
+        applyVisibility();
+    }
+
     function init() {
-        const tables = Array.from(document.querySelectorAll("table.js-smart-table"));
-        tables.forEach((table) => {
-            const tbody = table.querySelector("tbody");
-            if (!tbody) {
-                return;
-            }
-            addColumnFilters(table, tbody);
-            addSorting(table, tbody);
-        });
+        Array.from(document.querySelectorAll("table.js-smart-table")).forEach(initSmartTable);
     }
 
     if (document.readyState === "loading") {

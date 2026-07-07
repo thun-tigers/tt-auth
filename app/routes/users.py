@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, render_template, redirect, url_for, re
 import logging
 import requests as http_requests
 from datetime import datetime, timezone
+from sqlalchemy.orm import selectinload
 from ..extensions import db
 from ..models import User, Service, ServiceAccess, Team, TeamMembership, UserReviewEvent
 from ..forms import UserForm
@@ -22,15 +23,50 @@ def _is_platform_admin(current_user):
 @admin_required
 def index(current_user):
     selected_team_id = request.args.get('team_id', type=int)
+    query_text = (request.args.get('q') or '').strip().lower()
     teams = Team.query.filter_by(is_active=True).order_by(Team.sort_order, Team.name).all()
 
-    query = User.query.filter(User.account_status != 'draft')
+    query = (
+        User.query
+        .filter(User.account_status != 'draft')
+        .options(
+            selectinload(User.service_access).selectinload(ServiceAccess.service),
+            selectinload(User.memberships).selectinload(TeamMembership.team),
+        )
+    )
     if selected_team_id:
         query = query.filter(
             User.memberships.any(TeamMembership.team_id == selected_team_id)
         )
 
     users = query.order_by(User.username).all()
+    if query_text:
+        def _search_blob(user):
+            service_names = [
+                access.service.name
+                for access in user.service_access
+                if access.is_active and access.service and access.service.name
+            ]
+            service_roles = [
+                access.role
+                for access in user.service_access
+                if access.is_active and access.role
+            ]
+            parts = [
+                user.username,
+                user.email,
+                user.first_name,
+                user.last_name,
+                user.display_name,
+                user.full_name,
+                user.role,
+                user.account_status,
+                ' '.join(service_names),
+                ' '.join(service_roles),
+            ]
+            return ' '.join(part for part in parts if part).lower()
+
+        users = [user for user in users if query_text in _search_blob(user)]
 
     review_summary = _build_review_summary(users)
     is_platform_admin = _is_platform_admin(current_user)
@@ -40,6 +76,7 @@ def index(current_user):
         users=users,
         teams=teams,
         selected_team_id=selected_team_id,
+        query=(request.args.get('q') or '').strip(),
         current_user=current_user,
         review_summary=review_summary,
         is_platform_admin=is_platform_admin,

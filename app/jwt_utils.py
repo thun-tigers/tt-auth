@@ -1,3 +1,5 @@
+import uuid
+
 import jwt
 from datetime import datetime, timedelta, timezone
 from flask import current_app, request
@@ -158,6 +160,7 @@ def generate_sso_token(user, audience='tt-agenda', service_role=None, platform_r
         'role_permissions': role_permissions,
         'permissions': permissions,
         'aud': audience,
+        'jti': uuid.uuid4().hex,
         'iat': now,
         'exp': now + timedelta(seconds=ttl_seconds),
     }

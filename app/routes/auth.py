@@ -26,8 +26,10 @@ def login():
 
     # Already logged in → redirect to dashboard
     token = get_jwt_from_request()
-    if token and validate_jwt(token):
-        return redirect(next_page or url_for('dashboard.index'))
+    if token:
+        payload = validate_jwt(token)
+        if payload:
+            return redirect(next_page or url_for('dashboard.index', auto_launch='1'))
 
     form = LoginForm(request.form)
     if request.method == 'POST' and form.validate():
@@ -37,7 +39,7 @@ def login():
                 flash('Dein Konto ist noch nicht freigegeben oder wurde gesperrt.', 'warning')
                 return render_template('login.html', form=form, next_page=next_page)
             token = generate_jwt(user)
-            response = make_response(redirect(next_page or url_for('dashboard.index')))
+            response = make_response(redirect(next_page or url_for('dashboard.index', auto_launch='1')))
             set_jwt_cookie(response, token)
             return response
         flash('Ungültiger Benutzername oder Passwort.', 'danger')

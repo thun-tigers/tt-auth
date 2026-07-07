@@ -4,6 +4,27 @@
 {% set active_tab = 'apps' %}
 
 {% block content %}
+{% if request.args.get('auto_launch') == '1' and services %}
+{% set attendance_service = services | selectattr('audience', 'equalto', 'tt-attendance') | list | first %}
+{% set members_service = services | selectattr('audience', 'equalto', 'tt-members') | list | first %}
+{% set attendance_url = url_for('dashboard.launch_service', service_id=attendance_service.id) if attendance_service else '' %}
+{% set members_url = url_for('dashboard.launch_service', service_id=members_service.id) if members_service else '' %}
+{% set members_messages_url = url_for('dashboard.launch_service', service_id=members_service.id, next='/messages') if members_service else '' %}
+<script>
+  (() => {
+    const url = {{ (
+      members_messages_url
+      if pending_messages_count > 0 and members_messages_url
+      else attendance_url
+      if attendance_url
+      else members_url
+    ) | tojson }};
+    if (url) {
+      window.location.replace(url);
+    }
+  })();
+</script>
+{% endif %}
 <div class="mb-6">
   <h1 class="text-xl font-bold text-slate-900 dark:text-white">Willkommen, {{ current_user.username }}!</h1>
   <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Wähle eine Anwendung</p>
