@@ -3,6 +3,7 @@ import logging
 import requests
 from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
+from werkzeug.middleware.proxy_fix import ProxyFix
 from .config import Config
 from .extensions import db, migrate, limiter
 
@@ -92,6 +93,7 @@ def create_app(config_class=Config):
             _bootstrap_default_user_access(app)
             _bootstrap_platform_admin_access(app)
 
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     return app
 
 
