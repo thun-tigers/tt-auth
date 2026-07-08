@@ -32,8 +32,8 @@ class Config:
     DEFAULT_INFRA_INTERNAL_URL = os.environ.get('DEFAULT_INFRA_INTERNAL_URL', 'http://host.docker.internal:8084')
     DEFAULT_ATTENDANCE_URL = os.environ.get('DEFAULT_ATTENDANCE_URL', 'http://localhost:8089')
     DEFAULT_ATTENDANCE_INTERNAL_URL = os.environ.get('DEFAULT_ATTENDANCE_INTERNAL_URL', 'http://host.docker.internal:8089')
-    TT_MEMBERS_INTERNAL_URL = os.environ.get('TT_MEMBERS_INTERNAL_URL', os.environ.get('DEFAULT_MEMBERS_INTERNAL_URL', 'http://tt-members:5000'))
-    TT_INFRA_INTERNAL_URL = os.environ.get('TT_INFRA_INTERNAL_URL', 'http://tt-infra:5000')
+    TT_MEMBERS_INTERNAL_URL = os.environ.get('TT_MEMBERS_INTERNAL_URL')
+    TT_INFRA_INTERNAL_URL = os.environ.get('TT_INFRA_INTERNAL_URL')
     SSO_SHARED_SECRET = os.environ.get('SSO_SHARED_SECRET') or SECRET_KEY
     SSO_TOKEN_EXPIRY_SECONDS = int(os.environ.get('SSO_TOKEN_EXPIRY_SECONDS', 60))
     INTERNAL_API_SECRET = os.environ.get('INTERNAL_API_SECRET') or 'tt-internal-dev-secret-change-me'
