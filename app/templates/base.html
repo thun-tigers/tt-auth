@@ -1,14 +1,10 @@
 {% extends "tt_common/base.html" %}
+{% from "tt_common/macros.html" import apps_link %}
 {% block title %}{% block page_title %}Tigers Auth{% endblock %}{% endblock %}
 
 {# Apps-Grid-Icon rechts in der App-Bar #}
 {% block appbar_actions %}
-<a href="{{ url_for('dashboard.index') }}" class="relative hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Apps">
-  <i class="bi bi-grid-fill"></i>
-  {% if pending_messages_count > 0 %}
-  <span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">{{ pending_messages_count if pending_messages_count < 100 else '99+' }}</span>
-  {% endif %}
-</a>
+{{ apps_link(url_for('dashboard.index'), pending_messages_count) }}
 {% endblock %}
 
 {# Admin-Desktop-Navigation #}
@@ -51,12 +47,6 @@
 {% endif %}
 <a href="{{ url_for('dashboard.profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep == 'dashboard.profile' else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
   <i class="bi bi-person-fill"></i>Profil
-</a>
-<a href="{{ url_for('dashboard.index') }}" class="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep == 'dashboard.index' else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-  <i class="bi bi-grid-fill"></i>Apps
-  {% if pending_messages_count > 0 %}
-  <span class="ml-auto min-w-[18px] h-[18px] px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">{{ pending_messages_count if pending_messages_count < 100 else '99+' }}</span>
-  {% endif %}
 </a>
 <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-slate-50 dark:bg-slate-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
   <i class="bi bi-box-arrow-right"></i>Abmelden
