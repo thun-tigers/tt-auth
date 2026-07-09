@@ -198,12 +198,20 @@ def _seed_default_services(app):
     for service_data in default_services:
         existing = Service.query.filter_by(name=service_data['name']).first()
         if existing:
+            # Always sync url/internal_url from env vars so a backup-restore
+            # with stale DB values is corrected on the next startup.
             updated = False
-            for field in ('url', 'internal_url', 'icon', 'description', 'required_role', 'sort_order'):
+            for field in ('icon', 'description', 'required_role', 'sort_order'):
                 new_value = service_data[field]
                 if getattr(existing, field) != new_value:
                     setattr(existing, field, new_value)
                     updated = True
+            for field in ('url', 'internal_url'):
+                new_value = service_data[field]
+                if getattr(existing, field) != new_value:
+                    setattr(existing, field, new_value)
+                    updated = True
+                    app.logger.info('Service %s: %s updated to %s', existing.name, field, new_value)
             if updated:
                 db.session.commit()
             continue
