@@ -24,7 +24,7 @@
         <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <div>
                 <h2 class="text-base font-semibold">Vorhandene Positionen</h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Ziehen zum Sortieren. Bearbeiten und Löschen direkt in der Zeile.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Ziehen zum Sortieren. Direkt in der Zeile bearbeiten.</p>
             </div>
             <div class="flex items-center gap-2">
                 <span class="text-sm text-slate-500 dark:text-slate-400 mr-2">{{ positions|length }} Einträge</span>
@@ -70,73 +70,62 @@
                 </thead>
                 <tbody id="positions-table-body" class="divide-y divide-slate-100 dark:divide-slate-700">
             {% for position in positions %}
-                        <tr class="position-row {% if not position.is_active %}bg-slate-50 dark:bg-slate-900/30{% endif %}" data-key="{{ position.key }}" draggable="true">
-                            <td class="px-4 py-3 align-middle">
-                                <button type="button" class="drag-handle inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200 cursor-grab" title="Reihenfolge ändern" aria-label="Reihenfolge ändern">
-                                    <i class="bi bi-grip-vertical"></i>
+                    <tr class="position-row {% if not position.is_active %}bg-slate-50 dark:bg-slate-900/30{% endif %}"
+                        data-key="{{ position.key }}"
+                        data-edit-url="{{ url_for('master_data.positions_edit', key=position.key) }}"
+                        draggable="true">
+                        <td class="px-4 py-3 align-middle">
+                            <button type="button" class="drag-handle view-mode inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200 cursor-grab" title="Reihenfolge ändern">
+                                <i class="bi bi-grip-vertical"></i>
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 align-middle">
+                            <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold uppercase tracking-wide">
+                                <span class="sort-number inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-white/70 dark:bg-slate-800 text-[11px]">{{ position.sort_order }}</span>
+                                <span>{{ position.key }}</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 align-middle">
+                            <span class="view-mode label-display font-medium text-slate-900 dark:text-white">{{ position.label }}</span>
+                            <input class="edit-mode hidden w-full px-2.5 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm"
+                                   type="text" name="label" value="{{ position.label }}" maxlength="100">
+                        </td>
+                        <td class="px-4 py-3 align-middle">
+                            <span class="view-mode status-badge {% if position.is_active %}inline-flex px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium{% else %}inline-flex px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium{% endif %}">
+                                {% if position.is_active %}Aktiv{% else %}Inaktiv{% endif %}
+                            </span>
+                            <label class="edit-mode hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input type="checkbox" name="is_active" value="y" {% if position.is_active %}checked{% endif %} class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                Aktiv
+                            </label>
+                        </td>
+                        <td class="px-4 py-3 align-middle">
+                            <div class="view-mode flex items-center justify-end gap-1">
+                                <button type="button" class="edit-toggle p-2 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition" title="Bearbeiten">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold uppercase tracking-wide">
-                                    <span class="sort-number inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-white/70 dark:bg-slate-800 text-[11px]">{{ position.sort_order }}</span>
-                                    <span>{{ position.key }}</span>
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                <div class="font-medium text-slate-900 dark:text-white">{{ position.label }}</div>
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                {% if position.is_active %}
-                                <span class="inline-flex px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium">Aktiv</span>
-                                {% else %}
-                                <span class="inline-flex px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium">Inaktiv</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                <div class="flex items-center justify-end gap-1">
-                                    <button type="button" class="edit-toggle p-2 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition" title="Bearbeiten" aria-label="Bearbeiten">
-                                        <i class="bi bi-pencil"></i>
+                                <form method="POST" action="{{ url_for('master_data.positions_delete', key=position.key) }}" onsubmit="return confirm('Position {{ position.key }} wirklich löschen?')">
+                                    <button type="submit" class="p-2 text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition" title="Löschen">
+                                        <i class="bi bi-trash"></i>
                                     </button>
-                                    <form method="POST" action="{{ url_for('master_data.positions_delete', key=position.key) }}" onsubmit="return confirm('Position {{ position.key }} wirklich löschen?')">
-                                        <button type="submit" class="p-2 text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition" title="Löschen" aria-label="Löschen">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr class="edit-row hidden {% if not position.is_active %}bg-slate-50 dark:bg-slate-900/30{% endif %}" data-key="{{ position.key }}">
-                            <td colspan="5" class="px-4 pb-4">
-                                <form method="POST" action="{{ url_for('master_data.positions_edit', key=position.key) }}" class="grid grid-cols-1 md:grid-cols-[140px_1fr_auto_auto] gap-3 items-end rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/50 p-4">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Schlüssel</label>
-                                        <input type="text" value="{{ position.key }}" readonly class="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white/70 dark:bg-slate-800 text-sm font-semibold uppercase">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Bezeichnung</label>
-                                        <input type="text" name="label" value="{{ position.label }}" maxlength="100" required class="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm">
-                                    </div>
-                                    <label class="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300">
-                                        <input type="checkbox" name="is_active" value="y" {% if position.is_active %}checked{% endif %} class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
-                                        Aktiv
-                                    </label>
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button type="button" class="edit-cancel px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition">Abbrechen</button>
-                                        <input type="hidden" name="sort_order" value="{{ position.sort_order }}">
-                                        <button type="submit" class="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
-                                            <i class="bi bi-check-lg"></i>
-                                            Speichern
-                                        </button>
-                                    </div>
                                 </form>
-                            </td>
-                        </tr>
+                            </div>
+                            <div class="edit-mode hidden flex items-center justify-end gap-2">
+                                <button type="button" class="cancel-edit px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                                    Abbrechen
+                                </button>
+                                <button type="button" class="save-edit inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition disabled:opacity-50">
+                                    <i class="bi bi-check-lg"></i> Speichern
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
             {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                                Keine Stammdaten vorhanden.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            Keine Stammdaten vorhanden.
+                        </td>
+                    </tr>
             {% endfor %}
                 </tbody>
             </table>
@@ -166,29 +155,33 @@
     const newKeyInput = document.getElementById('new-position-key');
     const newSortOrderInput = document.getElementById('new-position-sort-order');
 
-    if (!body || !orderForm || !newPanel || !newCancel || !newSortOrderInput) {
-        return;
-    }
+    if (!body || !orderForm || !newPanel || !newCancel || !newSortOrderInput) return;
 
     const rows = () => Array.from(body.querySelectorAll('.position-row'));
-    const editRows = () => Array.from(body.querySelectorAll('.edit-row'));
-    const hiddenOrderInputs = () => Array.from(orderForm.querySelectorAll('input[name="order"]'));
     let orderChanged = false;
 
     const setOrderChanged = (changed) => {
         orderChanged = changed;
-        saveButtons.forEach((button) => {
-            button.disabled = !orderChanged;
-        });
+        saveButtons.forEach((btn) => { btn.disabled = !orderChanged; });
     };
 
     const updateSortNumbers = () => {
         rows().forEach((row, index) => {
             const badge = row.querySelector('.sort-number');
-            if (badge) {
-                badge.textContent = String(index + 1);
-            }
+            if (badge) badge.textContent = String(index + 1);
         });
+    };
+
+    const syncOrder = () => {
+        orderForm.querySelectorAll('input[name="order"]').forEach((el) => el.remove());
+        rows().forEach((row) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'order';
+            input.value = row.dataset.key;
+            orderForm.appendChild(input);
+        });
+        updateSortNumbers();
     };
 
     const toggleNewPanel = (show) => {
@@ -199,71 +192,93 @@
         }
     };
 
-    const closeAllEditors = () => {
-        editRows().forEach((row) => row.classList.add('hidden'));
+    const setEditMode = (row, editing) => {
+        row.querySelectorAll('.view-mode').forEach((el) => el.classList.toggle('hidden', editing));
+        row.querySelectorAll('.edit-mode').forEach((el) => el.classList.toggle('hidden', !editing));
+        row.draggable = !editing;
+        if (editing) row.querySelector('input[name="label"]')?.focus();
     };
 
-    addButtons.forEach((button) => {
-        button.addEventListener('click', () => {
+    const closeAllEditors = () => rows().forEach((row) => setEditMode(row, false));
+
+    addButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
             closeAllEditors();
             toggleNewPanel(true);
         });
     });
 
-    newCancel.addEventListener('click', () => {
-        toggleNewPanel(false);
-    });
+    newCancel.addEventListener('click', () => toggleNewPanel(false));
 
-    saveButtons.forEach((button) => {
-        button.addEventListener('click', () => {
+    saveButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
             syncOrder();
             orderForm.submit();
         });
     });
 
-    body.addEventListener('click', (event) => {
-        const editButton = event.target.closest('.edit-toggle');
-        if (editButton) {
+    body.addEventListener('click', async (event) => {
+        const editBtn = event.target.closest('.edit-toggle');
+        if (editBtn) {
             toggleNewPanel(false);
-            const row = editButton.closest('.position-row');
-            const key = row?.dataset.key;
-            const editor = key ? body.querySelector(`.edit-row[data-key="${key}"]`) : null;
-            if (!editor) {
-                return;
-            }
-            const isHidden = editor.classList.contains('hidden');
+            const row = editBtn.closest('.position-row');
+            const isEditing = !row.querySelector('.edit-mode').classList.contains('hidden');
             closeAllEditors();
-            if (isHidden) {
-                editor.classList.remove('hidden');
-            }
+            if (!isEditing) setEditMode(row, true);
             return;
         }
 
-        const cancelButton = event.target.closest('.edit-cancel');
-        if (cancelButton) {
-            const editor = cancelButton.closest('.edit-row');
-            editor?.classList.add('hidden');
+        const cancelBtn = event.target.closest('.cancel-edit');
+        if (cancelBtn) {
+            setEditMode(cancelBtn.closest('.position-row'), false);
+            return;
+        }
+
+        const saveBtn = event.target.closest('.save-edit');
+        if (saveBtn) {
+            const row = saveBtn.closest('.position-row');
+            const url = row.dataset.editUrl;
+            const label = row.querySelector('input[name="label"]').value.trim();
+            const isActive = row.querySelector('input[name="is_active"]').checked;
+            const sortOrder = row.querySelector('.sort-number').textContent;
+
+            const formData = new FormData();
+            formData.append('label', label);
+            if (isActive) formData.append('is_active', 'y');
+            formData.append('sort_order', sortOrder);
+
+            saveBtn.disabled = true;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData,
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    row.querySelector('.label-display').textContent = label;
+                    const badge = row.querySelector('.status-badge');
+                    if (isActive) {
+                        badge.textContent = 'Aktiv';
+                        badge.className = 'view-mode status-badge inline-flex px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium';
+                    } else {
+                        badge.textContent = 'Inaktiv';
+                        badge.className = 'view-mode status-badge inline-flex px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium';
+                    }
+                    setEditMode(row, false);
+                } else {
+                    alert(data.error || 'Fehler beim Speichern.');
+                }
+            } catch {
+                alert('Fehler beim Speichern.');
+            } finally {
+                saveBtn.disabled = false;
+            }
+            return;
         }
     });
 
     let draggedRow = null;
-
-    const syncOrder = () => {
-        hiddenOrderInputs().forEach((input) => input.remove());
-        rows().forEach((row) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'order';
-            input.value = row.dataset.key;
-            orderForm.appendChild(input);
-
-            const editor = body.querySelector(`.edit-row[data-key="${row.dataset.key}"]`);
-            if (editor) {
-                body.appendChild(editor);
-            }
-        });
-        updateSortNumbers();
-    };
 
     rows().forEach((row) => {
         row.addEventListener('dragstart', () => {
@@ -271,39 +286,21 @@
             row.classList.add('opacity-50');
             closeAllEditors();
         });
-
         row.addEventListener('dragend', () => {
             row.classList.remove('opacity-50');
             draggedRow = null;
         });
-
-        row.addEventListener('dragover', (event) => {
-            event.preventDefault();
-        });
-
+        row.addEventListener('dragover', (event) => event.preventDefault());
         row.addEventListener('drop', (event) => {
             event.preventDefault();
-            if (!draggedRow || draggedRow === row) {
-                return;
-            }
-
+            if (!draggedRow || draggedRow === row) return;
             const rowRect = row.getBoundingClientRect();
-            const dropAfter = event.clientY > rowRect.top + (rowRect.height / 2);
-            const draggedEditor = body.querySelector(`.edit-row[data-key="${draggedRow.dataset.key}"]`);
-
+            const dropAfter = event.clientY > rowRect.top + rowRect.height / 2;
             if (dropAfter) {
-                const nextEditor = body.querySelector(`.edit-row[data-key="${row.dataset.key}"]`);
-                body.insertBefore(draggedRow, nextEditor ? nextEditor.nextSibling : row.nextSibling);
-                if (draggedEditor) {
-                    body.insertBefore(draggedEditor, nextEditor ? nextEditor.nextSibling : draggedRow.nextSibling);
-                }
+                row.insertAdjacentElement('afterend', draggedRow);
             } else {
                 body.insertBefore(draggedRow, row);
-                if (draggedEditor) {
-                    body.insertBefore(draggedEditor, row);
-                }
             }
-
             syncOrder();
             setOrderChanged(true);
         });

@@ -19,13 +19,13 @@
     <span class="min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">{{ pending_users_count if pending_users_count < 100 else '99+' }}</span>
     {% endif %}
   </a>
-  <a href="{{ url_for('master_data.positions') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
-    {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep and ep.startswith('master_data.') else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
-    <i class="bi bi-diagram-3"></i>Stammdaten
+  <a href="{{ url_for('master_data.member_roles') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
+    {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep in ['master_data.member_roles','master_data.member_roles_new','master_data.member_roles_edit'] else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
+    <i class="bi bi-people"></i>Rollen
   </a>
-  <a href="{{ url_for('services.index') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
-    {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep in ['services.index','services.new','services.edit'] else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
-    <i class="bi bi-app-indicator"></i>Services
+  <a href="{{ url_for('master_data.role_permissions') }}" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition
+    {{ 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900' if ep and ep.startswith('master_data.role_permissions') else 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900' }}">
+    <i class="bi bi-shield-check"></i>Rechte
   </a>
 </div>
 {% endif %}
@@ -38,11 +38,11 @@
 <a href="{{ url_for('users.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep in ['users.index','users.new','users.edit'] else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
   <i class="bi bi-people-fill"></i>Benutzer
 </a>
-<a href="{{ url_for('services.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep in ['services.index','services.new','services.edit'] else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-  <i class="bi bi-app-indicator"></i>Services
+<a href="{{ url_for('master_data.member_roles') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep in ['master_data.member_roles','master_data.member_roles_new','master_data.member_roles_edit'] else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
+  <i class="bi bi-people"></i>Rollen
 </a>
-<a href="{{ url_for('master_data.positions') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep and ep.startswith('master_data.') else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
-  <i class="bi bi-diagram-3"></i>Stammdaten
+<a href="{{ url_for('master_data.role_permissions') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep and ep.startswith('master_data.role_permissions') else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">
+  <i class="bi bi-shield-check"></i>Rechte
 </a>
 {% endif %}
 <a href="{{ url_for('dashboard.profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ 'bg-indigo-600 text-white' if ep == 'dashboard.profile' else 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700' }}">

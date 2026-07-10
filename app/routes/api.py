@@ -662,3 +662,102 @@ def team_manager_reject_user():
         )
 
     return jsonify({'status': 'ok', 'target_user_id': target.id})
+
+
+# ── Internal Services API (consumed by tt-infra) ───────────────────────────
+
+def _serialize_service(service):
+    return {
+        'id': service.id,
+        'name': service.name,
+        'url': service.url,
+        'internal_url': service.internal_url,
+        'icon': service.icon,
+        'description': service.description,
+        'required_role': service.required_role,
+        'is_active': service.is_active,
+        'sort_order': service.sort_order,
+    }
+
+
+@bp.route('/internal/services', methods=['GET'])
+def internal_services_list():
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    services = Service.query.order_by(Service.sort_order, Service.name).all()
+    return jsonify({'services': [_serialize_service(s) for s in services]})
+
+
+@bp.route('/internal/services', methods=['POST'])
+def internal_services_create():
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    payload = request.get_json(silent=True) or {}
+    name = (payload.get('name') or '').strip()
+    url_val = (payload.get('url') or '').strip()
+    if not name or not url_val:
+        return jsonify({'error': 'name_and_url_required'}), 400
+    if Service.query.filter_by(name=name).first():
+        return jsonify({'error': 'already_exists'}), 409
+    service = Service(
+        name=name,
+        url=url_val,
+        internal_url=(payload.get('internal_url') or '').strip() or None,
+        icon=payload.get('icon') or 'grid',
+        description=payload.get('description') or '',
+        required_role=payload.get('required_role') or 'user',
+        is_active=bool(payload.get('is_active', True)),
+        sort_order=int(payload.get('sort_order') or 0),
+    )
+    db.session.add(service)
+    db.session.commit()
+    return jsonify({'status': 'created', 'service': _serialize_service(service)}), 201
+
+
+@bp.route('/internal/services/<int:service_id>', methods=['GET'])
+def internal_service_get(service_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({'service': _serialize_service(service)})
+
+
+@bp.route('/internal/services/<int:service_id>', methods=['PUT'])
+def internal_service_update(service_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'not_found'}), 404
+    payload = request.get_json(silent=True) or {}
+    name = (payload.get('name') or '').strip()
+    url_val = (payload.get('url') or '').strip()
+    if not name or not url_val:
+        return jsonify({'error': 'name_and_url_required'}), 400
+    existing = Service.query.filter_by(name=name).first()
+    if existing and existing.id != service.id:
+        return jsonify({'error': 'name_already_exists'}), 409
+    service.name = name
+    service.url = url_val
+    service.internal_url = (payload.get('internal_url') or '').strip() or None
+    service.icon = payload.get('icon') or 'grid'
+    service.description = payload.get('description') or ''
+    service.required_role = payload.get('required_role') or 'user'
+    service.is_active = bool(payload.get('is_active', True))
+    service.sort_order = int(payload.get('sort_order') or 0)
+    db.session.commit()
+    return jsonify({'status': 'updated', 'service': _serialize_service(service)})
+
+
+@bp.route('/internal/services/<int:service_id>', methods=['DELETE'])
+def internal_service_delete(service_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'not_found'}), 404
+    db.session.delete(service)
+    db.session.commit()
+    return jsonify({'status': 'deleted'})
