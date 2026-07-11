@@ -194,9 +194,16 @@ def _seed_default_services(app):
         },
     ]
 
+    existing_services = {
+        service.name: service
+        for service in Service.query.filter(
+            Service.name.in_([service_data['name'] for service_data in default_services]),
+        ).all()
+    }
+
     created = []
     for service_data in default_services:
-        existing = Service.query.filter_by(name=service_data['name']).first()
+        existing = existing_services.get(service_data['name'])
         if existing:
             # Always sync url/internal_url from env vars so a backup-restore
             # with stale DB values is corrected on the next startup.
@@ -306,9 +313,16 @@ def _seed_default_teams(app):
         ('SENIORS', 'Seniors', 40),
         ('ULTIMATE_FLAG', 'Ultimate Flag', 50),
     ]
+    existing_codes = {
+        code
+        for (code,) in Team.query.with_entities(Team.code).filter(
+            Team.code.in_([code for code, _, _ in default_teams]),
+        ).all()
+    }
+
     changed = False
     for code, name, sort_order in default_teams:
-        if Team.query.filter_by(code=code).first():
+        if code in existing_codes:
             continue
         db.session.add(Team(code=code, name=name, sort_order=sort_order, is_active=True))
         changed = True
@@ -331,9 +345,16 @@ def _seed_default_member_roles(app):
         ('team_betreuer', 'Team-Betreuer', 50),
     ]
 
+    existing_roles = {
+        role.key: role
+        for role in MemberRole.query.filter(
+            MemberRole.key.in_([key for key, _, _ in defaults]),
+        ).all()
+    }
+
     changed = False
     for key, label, sort_order in defaults:
-        role = MemberRole.query.filter_by(key=key).first()
+        role = existing_roles.get(key)
         if role:
             if role.label != label or role.sort_order != sort_order or not role.is_active:
                 role.label = label
@@ -370,13 +391,16 @@ def _seed_default_role_permissions(app):
         ('team_betreuer', '*', 'approve', 120),
     ]
 
+    existing_permissions = {
+        (item.member_role_key, item.service_name, item.permission_key): item
+        for item in RolePermission.query.filter(
+            RolePermission.member_role_key.in_([member_role_key for member_role_key, _, _, _ in defaults]),
+        ).all()
+    }
+
     changed = False
     for member_role_key, service_name, permission_key, sort_order in defaults:
-        item = RolePermission.query.filter_by(
-            member_role_key=member_role_key,
-            service_name=service_name,
-            permission_key=permission_key,
-        ).first()
+        item = existing_permissions.get((member_role_key, service_name, permission_key))
         if item:
             if item.sort_order != sort_order or not item.is_active:
                 item.sort_order = sort_order
