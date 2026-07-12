@@ -809,3 +809,78 @@ def internal_service_delete(service_id):
     db.session.delete(service)
     db.session.commit()
     return jsonify({'status': 'deleted'})
+
+
+# ── Internal Member Roles API (consumed by tt-infra) ───────────────────────
+
+def _serialize_member_role(role):
+    return {
+        'id': role.id,
+        'key': role.key,
+        'label': role.label,
+        'sort_order': role.sort_order,
+        'is_active': role.is_active,
+    }
+
+
+@bp.route('/internal/member-roles', methods=['GET'])
+def internal_member_roles_list():
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    roles = MemberRole.query.order_by(MemberRole.sort_order, MemberRole.key).all()
+    return jsonify({'roles': [_serialize_member_role(r) for r in roles]})
+
+
+@bp.route('/internal/member-roles', methods=['POST'])
+def internal_member_roles_create():
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    payload = request.get_json(silent=True) or {}
+    key = (payload.get('key') or '').strip().lower()
+    label = (payload.get('label') or '').strip()
+    if not key or not label:
+        return jsonify({'error': 'key_and_label_required'}), 400
+    if MemberRole.query.filter_by(key=key).first():
+        return jsonify({'error': 'already_exists'}), 409
+    role = MemberRole(
+        key=key,
+        label=label,
+        sort_order=int(payload.get('sort_order') or 0),
+        is_active=bool(payload.get('is_active', True)),
+    )
+    db.session.add(role)
+    db.session.commit()
+    return jsonify({'status': 'created', 'role': _serialize_member_role(role)}), 201
+
+
+@bp.route('/internal/member-roles/<int:role_id>', methods=['PUT'])
+def internal_member_roles_update(role_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    role = db.session.get(MemberRole, role_id)
+    if not role:
+        return jsonify({'error': 'not_found'}), 404
+    payload = request.get_json(silent=True) or {}
+    label = (payload.get('label') or '').strip()
+    if not label:
+        return jsonify({'error': 'label_required'}), 400
+    role.label = label
+    role.sort_order = int(payload.get('sort_order') if payload.get('sort_order') is not None else role.sort_order)
+    role.is_active = bool(payload.get('is_active', role.is_active))
+    db.session.commit()
+    return jsonify({'status': 'updated', 'role': _serialize_member_role(role)})
+
+
+@bp.route('/internal/member-roles/<int:role_id>', methods=['DELETE'])
+def internal_member_roles_delete(role_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    role = db.session.get(MemberRole, role_id)
+    if not role:
+        return jsonify({'error': 'not_found'}), 404
+    in_use = TeamMembership.query.filter_by(member_role=role.key).first()
+    if in_use:
+        return jsonify({'error': 'in_use'}), 409
+    db.session.delete(role)
+    db.session.commit()
+    return jsonify({'status': 'deleted'})
