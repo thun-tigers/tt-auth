@@ -465,6 +465,13 @@ def _ensure_lightweight_schema_updates(app):
     if 'reviewed_at' not in columns:
         statements.append('ALTER TABLE users ADD COLUMN reviewed_at TIMESTAMP')
 
+    if 'team_memberships' in inspector.get_table_names():
+        membership_columns = {column['name'] for column in inspector.get_columns('team_memberships')}
+        if 'valid_from' not in membership_columns:
+            statements.append('ALTER TABLE team_memberships ADD COLUMN valid_from DATE')
+        if 'valid_to' not in membership_columns:
+            statements.append('ALTER TABLE team_memberships ADD COLUMN valid_to DATE')
+
     if 'user_review_events' not in inspector.get_table_names():
         timestamp_type = 'TIMESTAMPTZ' if dialect == 'postgresql' else 'TIMESTAMP'
         statements.append(

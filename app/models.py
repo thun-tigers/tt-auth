@@ -165,6 +165,8 @@ class TeamMembership(db.Model):
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
     member_role = db.Column(db.String(32), nullable=False, default='player')  # player, coach, head_coach
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    valid_from = db.Column(db.Date, nullable=True)
+    valid_to = db.Column(db.Date, nullable=True)
 
     user = db.relationship('User', backref=db.backref('memberships', lazy=True, cascade='all, delete-orphan'))
     team = db.relationship('Team', backref=db.backref('memberships', lazy=True, cascade='all, delete-orphan'))
@@ -175,6 +177,8 @@ class TeamMembership(db.Model):
             'team_code': self.team.code if self.team else None,
             'team_name': self.team.name if self.team else None,
             'member_role': self.member_role,
+            'valid_from': self.valid_from.isoformat() if self.valid_from else None,
+            'valid_to': self.valid_to.isoformat() if self.valid_to else None,
         }
 
     def __repr__(self):

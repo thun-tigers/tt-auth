@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, jsonify, request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 from ..extensions import db
 from ..models import MemberRole, Service, ServiceAccess, Team, TeamMembership, User, UserReviewEvent
@@ -39,6 +39,39 @@ def get_user(user_id):
             if membership.is_active and membership.team and membership.team.code
         }),
     })
+
+
+@bp.route('/internal/teams/<team_code>/members', methods=['GET'])
+def get_team_members(team_code):
+    """Return active, time-aware team memberships for attendance statistics."""
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+    raw_date = request.args.get('as_of')
+    try:
+        effective_date = date.fromisoformat(raw_date) if raw_date else date.today()
+    except ValueError:
+        return jsonify({'error': 'invalid_as_of'}), 400
+    normalized = (team_code or '').strip().upper()
+    team = Team.query.filter_by(code=normalized).first()
+    if not team:
+        return jsonify({'members': [], 'team_code': normalized, 'as_of': effective_date.isoformat()})
+    members = []
+    for membership in TeamMembership.query.filter_by(team_id=team.id, is_active=True).all():
+        if membership.valid_from and membership.valid_from > effective_date:
+            continue
+        if membership.valid_to and membership.valid_to < effective_date:
+            continue
+        if not membership.user:
+            continue
+        members.append({
+            # tt-auth user.id is the canonical system-wide SSO subject.
+            'auth_user_id': membership.user.id,
+            'team_code': normalized,
+            'member_role': membership.member_role,
+            'valid_from': membership.valid_from.isoformat() if membership.valid_from else None,
+            'valid_to': membership.valid_to.isoformat() if membership.valid_to else None,
+        })
+    return jsonify({'members': members, 'team_code': normalized, 'as_of': effective_date.isoformat()})
 
 
 @bp.route('/users/<int:user_id>/profile-complete', methods=['POST'])
@@ -174,6 +207,8 @@ def _serialize_membership(membership):
         },
         'member_role': membership.member_role,
         'is_active': membership.is_active,
+        'valid_from': membership.valid_from.isoformat() if membership.valid_from else None,
+        'valid_to': membership.valid_to.isoformat() if membership.valid_to else None,
     }
 
 
@@ -294,9 +329,20 @@ def _validate_active_memberships_payload(payload):
             return None, 'active_memberships_invalid_role'
         if member_role == 'none':
             continue
+        for field in ('valid_from', 'valid_to'):
+            value = entry.get(field)
+            if value:
+                try:
+                    date.fromisoformat(value)
+                except (TypeError, ValueError):
+                    return None, f'{field}_invalid'
         selected.setdefault(team_id, [])
         if member_role not in selected[team_id]:
-            selected[team_id].append(member_role)
+            selected[team_id].append({
+                'role': member_role,
+                'valid_from': entry.get('valid_from'),
+                'valid_to': entry.get('valid_to'),
+            })
 
     return selected, None
 
@@ -448,11 +494,13 @@ def team_manager_update_member(target_user_id):
     db.session.flush()
 
     for team_id, roles in desired_by_team.items():
-        for role in roles:
+        for role_data in roles:
             db.session.add(TeamMembership(
                 user_id=target.id,
                 team_id=team_id,
-                member_role=role,
+                member_role=role_data['role'],
+                valid_from=date.fromisoformat(role_data['valid_from']) if role_data.get('valid_from') else None,
+                valid_to=date.fromisoformat(role_data['valid_to']) if role_data.get('valid_to') else None,
                 is_active=True,
             ))
 
