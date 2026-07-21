@@ -233,6 +233,36 @@ def approve(current_user, user_id):
     return redirect(url_for('users.index'))
 
 
+@bp.route('/<int:user_id>/toggle-active', methods=['POST'])
+@login_required
+@admin_required
+def toggle_active(current_user, user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('Benutzer nicht gefunden.', 'danger')
+        return redirect(url_for('users.index'))
+
+    if str(user_id) == current_user['sub']:
+        flash('Du kannst deinen eigenen Account nicht sperren.', 'danger')
+        return redirect(url_for('users.index'))
+
+    if user.account_status not in ('active', 'suspended'):
+        flash('Konto muss zuerst freigegeben werden, bevor es gesperrt/aktiviert werden kann.', 'warning')
+        return redirect(url_for('users.index'))
+
+    if user.is_active:
+        user.is_active = False
+        user.account_status = 'suspended'
+        flash(f'Benutzer "{user.username}" gesperrt.', 'success')
+    else:
+        user.is_active = True
+        user.account_status = 'active'
+        flash(f'Benutzer "{user.username}" aktiviert.', 'success')
+
+    db.session.commit()
+    return redirect(url_for('users.index'))
+
+
 @bp.route('/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required

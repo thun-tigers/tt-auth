@@ -229,7 +229,7 @@ def _managed_team_memberships_query(approver, allowed_team_ids):
         User.query
         .join(TeamMembership, TeamMembership.user_id == User.id)
         .filter(
-            User.account_status == 'active',
+            User.account_status.in_(('active', 'suspended')),
             TeamMembership.is_active.is_(True),
         )
     )
@@ -369,7 +369,7 @@ def team_manager_members():
     query_text = (request.args.get('q') or '').strip().lower()
     query = (
         User.query
-        .filter(User.account_status == 'active')
+        .filter(User.account_status.in_(('active', 'suspended')))
         .order_by(User.display_name.is_(None), User.display_name, User.username)
     )
 
@@ -511,6 +511,50 @@ def team_manager_update_member(target_user_id):
         'status': 'ok',
         'target_user_id': target.id,
         'user': _serialize_user_for_management(target, allowed_team_ids),
+    })
+
+
+@bp.route('/team-manager/members/<int:target_user_id>/toggle-active', methods=['POST'])
+def team_manager_toggle_active(target_user_id):
+    if not _authorized():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    approver_auth_user_id = payload.get('approver_auth_user_id')
+    if not approver_auth_user_id:
+        return jsonify({'error': 'approver_auth_user_id_required'}), 400
+
+    approver = db.session.get(User, int(approver_auth_user_id))
+    target = db.session.get(User, target_user_id)
+    if not approver:
+        return jsonify({'error': 'approver_not_found'}), 404
+    if not target:
+        return jsonify({'error': 'target_user_not_found'}), 404
+
+    allowed_team_ids = _editor_allowed_team_ids(approver)
+    if approver.role != 'admin' and not _can_edit_user(approver, target, allowed_team_ids):
+        return jsonify({'error': 'forbidden'}), 403
+
+    if target.id == approver.id:
+        return jsonify({'error': 'cannot_toggle_self'}), 400
+
+    if target.account_status not in ('active', 'suspended'):
+        return jsonify({'error': 'invalid_account_status'}), 400
+
+    if target.is_active:
+        target.is_active = False
+        target.account_status = 'suspended'
+    else:
+        target.is_active = True
+        target.account_status = 'active'
+
+    db.session.commit()
+
+    return jsonify({
+        'status': 'ok',
+        'target_user_id': target.id,
+        'is_active': target.is_active,
+        'account_status': target.account_status,
     })
 
 

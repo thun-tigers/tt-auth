@@ -56,15 +56,15 @@
                 <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden md:table-cell">Nachname</th>
                 <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Rolle</th>
                 <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden lg:table-cell">Service-Rollen</th>
-                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300" title="Status">S</th>
-                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden xl:table-cell" title="Review">R</th>
-                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden xl:table-cell" title="Profil">P</th>
-                <th class="px-4 py-3"></th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300" title="Status" data-filter="off" data-sort="off">S</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden xl:table-cell" title="Review" data-filter="off" data-sort="off">R</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 hidden xl:table-cell" title="Profil" data-filter="off" data-sort="off">P</th>
+                <th class="sticky right-0 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             {% for user in users %}
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+            <tr class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
                 <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">
                     <div class="flex items-center gap-2">
                         <div class="w-7 h-7 bg-indigo-100 dark:bg-indigo-900/40 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
@@ -110,17 +110,26 @@
                     <span class="inline-flex items-center" title="Wartet auf Freigabe">
                         <i class="bi bi-hourglass-top text-amber-600 dark:text-amber-400 text-base"></i>
                     </span>
-                    {% elif user.account_status == 'suspended' or not user.is_active %}
-                    <span class="inline-flex items-center" title="Gesperrt">
-                        <i class="bi bi-slash-circle-fill text-red-500 dark:text-red-400 text-base"></i>
-                    </span>
+                    {% elif is_platform_admin and user.id|string != current_user.sub %}
+                    <form method="POST" action="{{ url_for('users.toggle_active', user_id=user.id) }}"
+                        {% if user.is_active %}onsubmit="return confirm('Benutzer {{ user.username }} sperren?')"{% endif %}>
+                        <button type="submit"
+                            class="inline-flex items-center hover:opacity-70 transition"
+                            title="{{ 'Aktiv – klicken zum Sperren' if user.is_active else 'Gesperrt – klicken zum Aktivieren' }}">
+                            {% if user.is_active %}
+                            <i class="bi bi-patch-check-fill text-green-600 dark:text-green-400 text-base"></i>
+                            {% else %}
+                            <i class="bi bi-slash-circle-fill text-red-500 dark:text-red-400 text-base"></i>
+                            {% endif %}
+                        </button>
+                    </form>
                     {% elif user.is_active %}
                     <span class="inline-flex items-center" title="Aktiv">
                         <i class="bi bi-patch-check-fill text-green-600 dark:text-green-400 text-base"></i>
                     </span>
                     {% else %}
-                    <span class="inline-flex items-center" title="Inaktiv">
-                        <i class="bi bi-pause-circle text-slate-400 text-base"></i>
+                    <span class="inline-flex items-center" title="Gesperrt">
+                        <i class="bi bi-slash-circle-fill text-red-500 dark:text-red-400 text-base"></i>
                     </span>
                     {% endif %}
                 </td>
@@ -152,7 +161,7 @@
                     </span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-right">
+                <td class="sticky right-0 px-4 py-3 text-right bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/30 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] transition">
                     <div class="flex items-center justify-end gap-1">
                         <a href="{{ url_for('users.review_history', user_id=user.id) }}"
                             class="p-1.5 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition" title="Review-Historie">
