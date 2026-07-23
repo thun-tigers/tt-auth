@@ -18,7 +18,28 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir "tt-common @ git+https://github.com/thun-tigers/tt-common@main"
+          pip install --no-cache-dir -r requirements.txt
+          pip install pytest==8.0.0
+
+      - name: Run tests
+        run: python -m pytest
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
