@@ -5,6 +5,7 @@ from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from .config import Config
+from .db_bootstrap import schema_setup_lock
 from .extensions import db, migrate, limiter
 
 
@@ -78,20 +79,16 @@ def create_app(config_class=Config):
 
     with app.app_context():
         if app.config.get('AUTO_CREATE_DB', True):
-            try:
+            with schema_setup_lock(db.engine):
                 db.create_all()
-            except IntegrityError:
-                # Multi-worker startup can race on first-time table creation in Postgres.
-                db.session.rollback()
-                app.logger.info('Schema creation race detected; continuing with existing tables.')
-            _ensure_lightweight_schema_updates(app)
-            _seed_default_users(app)
-            _seed_default_services(app)
-            _seed_default_teams(app)
-            _seed_default_member_roles(app)
-            _seed_default_role_permissions(app)
-            _bootstrap_default_user_access(app)
-            _bootstrap_platform_admin_access(app)
+                _ensure_lightweight_schema_updates(app)
+                _seed_default_users(app)
+                _seed_default_services(app)
+                _seed_default_teams(app)
+                _seed_default_member_roles(app)
+                _seed_default_role_permissions(app)
+                _bootstrap_default_user_access(app)
+                _bootstrap_platform_admin_access(app)
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     return app
